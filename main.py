@@ -9,6 +9,10 @@ import numpy as np
 import networkx as nx
 import random
 from scipy.stats import beta
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from network_backend import Network, get_d_norm
 from chatgpt_interface import Poster
@@ -35,9 +39,7 @@ updates_per_cycle = 8
 posts_per_cycle = 7
 init_updates = 0
 
-# Read your API key
-with open("key_file.txt", "r") as file:
-    api_key = file.read()
+api_key = os.getenv("OPENAI_API_KEY")
 
 opinion_axes = [
     {
