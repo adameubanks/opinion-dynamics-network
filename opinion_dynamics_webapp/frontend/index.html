@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opinion Dynamics Simulation</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <!-- Plotly.js via CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div id="feed-container">
+                <h2>Feed</h2>
+                <div id="feed-messages" class="scrollable-feed">
+                    <!-- Feed messages will be appended here -->
+                </div>
+                <div class="feed-input-area">
+                    <input type="text" id="message-input" placeholder="Type your message...">
+                    <button id="send-button">Send</button>
+                </div>
+            </div>
+
+            <div id="visualization-container">
+                <h2>Opinion Dynamics</h2>
+                <div id="opinion-chart"></div>
+                <h2 style="margin-top: 20px;">Network Connections</h2>
+                <div id="connection-chart"></div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div id="updates-panel">
+                <h2>Updates</h2>
+                <div id="updates-log" class="scrollable-updates">
+                    <!-- Update messages will be appended here -->
+                </div>
+            </div>
+            <div id="controls-panel">
+                <h2>Controls</h2>
+                <button id="reset-button">Reset Simulation</button>
+                 <label for="strategic-agents-checkbox">Include Strategic Agents:</label>
+                 <input type="checkbox" id="strategic-agents-checkbox" checked>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html> 

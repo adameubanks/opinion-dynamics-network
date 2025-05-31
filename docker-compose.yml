@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  opinion-app:
+    build:
+      context: ./opinion_dynamics_webapp
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./opinion_dynamics_webapp/backend:/app/backend
+      - ./opinion_dynamics_webapp/frontend:/app/frontend
+    env_file:
+      - .env
+    container_name: opinion_dynamics_app
