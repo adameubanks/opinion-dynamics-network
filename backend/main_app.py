@@ -338,6 +338,46 @@ async def get_initial_state_api():
         print(f"Error creating simulation state payload in get_initial_state_api: {e}")
         raise HTTPException(status_code=500, detail=f"Error retrieving simulation state: {str(e)}")
 
+async def send_staggered_agent_responses(user_agent_index: int, current_A: np.ndarray, current_bot_names: np.ndarray):
+    """Send agent responses with random delays to simulate natural reaction timing."""
+    import asyncio
+    import random
+    
+    # Create list of all agents except user
+    agent_indices = [i for i in range(SIM_PARAMS["n_agents"]) if i != user_agent_index]
+    
+    # Randomize the order of responses
+    random.shuffle(agent_indices)
+    
+    for i, agent_idx in enumerate(agent_indices):
+        is_strategic = False
+        if SIM_PARAMS["include_strategic_agents"]:
+            num_strat = len(SIM_PARAMS.get("strategic_agents_initial_opinion_targets", []))
+            if agent_idx >= SIM_PARAMS["n_agents"] - num_strat:
+                is_strategic = True
+        
+        agent_name = current_bot_names[agent_idx] if agent_idx < len(current_bot_names) else f"Agent {agent_idx}"
+        
+        # Determine if agent read or ignored the post
+        if current_A[user_agent_index, agent_idx] == 1 or is_strategic:
+            update_message = f"{agent_name} read your post."
+        else:
+            update_message = f"{agent_name} ignored your post."
+        
+        # Send individual update
+        try:
+            await manager.broadcast_json({"type": "updates_log", "data": [update_message]})
+        except Exception as e:
+            print(f"Error sending staggered response for {agent_name}: {e}")
+        
+        # Add random delay before next response (200-800ms)
+        # Make earlier responses faster, later ones slower for natural feel
+        base_delay = 0.2 + (i * 0.05)  # Gradually increase delay
+        random_variance = random.uniform(-0.1, 0.3)  # Add some randomness
+        delay = max(0.1, base_delay + random_variance)  # Ensure minimum 100ms
+        
+        await asyncio.sleep(delay)
+
 @app.post("/api/send_message")
 async def send_user_message(user_message: UserMessage):
     global user_posted_this_cycle_flag # Ensure this global is recognized
@@ -371,36 +411,11 @@ async def send_user_message(user_message: UserMessage):
         else: # Should not happen if network is initialized
              network_instance.add_user_opinion(np.array(SIM_PARAMS["user_agents_initial_opinion"][0]), user_index=user_agent_index)
 
-
-    await manager.broadcast_json({
-        "type": "new_post",
-        "data": {
-            "sender_name": current_bot_names[user_agent_index] if user_agent_index < len(current_bot_names) else "User",
-            "sender_index": user_agent_index,
-            "message": message_text,
-            "opinion_vector": user_opinion_vector 
-        }
-    })
-
+    # Get current adjacency matrix for agent responses
     _, current_A, _ = network_instance.get_state()
-    updates_log = []
-    for i in range(SIM_PARAMS["n_agents"]):
-        if i == user_agent_index:
-            continue
-        
-        is_strategic = False
-        if SIM_PARAMS["include_strategic_agents"]:
-             num_strat = len(SIM_PARAMS.get("strategic_agents_initial_opinion_targets", []))
-             if i >= SIM_PARAMS["n_agents"] - num_strat:
-                 is_strategic = True
-        
-        agent_name_i = current_bot_names[i] if i < len(current_bot_names) else f"Agent {i}"
-        if current_A[user_agent_index, i] == 1 or is_strategic:
-            updates_log.append(f"{agent_name_i} read your post.")
-        else:
-            updates_log.append(f"{agent_name_i} ignored your post.")
-            
-    await manager.broadcast_json({"type": "updates_log", "data": updates_log})
+    
+    # Start staggered agent responses in background (don't await)
+    asyncio.create_task(send_staggered_agent_responses(user_agent_index, current_A, current_bot_names))
     
     user_posted_this_cycle_flag = True
     return {"status": "message_processed", "analyzed_opinion": user_opinion_vector}

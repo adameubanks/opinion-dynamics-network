@@ -253,13 +253,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         const node_colors = opinions.map((op, i) => getAgentColor(i, op));
-        // For updates, it's often simpler to just provide the new data arrays for x and y for both traces.
-        // Plotly will efficiently update the existing traces.
-        const updateData = [
-            { x: edges_x, y: edges_y }, // Updated data for edge_trace (index 0)
-            { x: opinions.map(op => op[0]), y: opinions.map(op => op[1]), 'marker.color': node_colors } // Updated data for node_trace (index 1)
-        ];
-        Plotly.restyle(connectionChartDiv, updateData).catch(err => console.error("Plotly.restyle failed for connection chart:", err));
+        
+        // Update edges (trace 0) and nodes (trace 1) separately
+        try {
+            // Update edge trace (trace 0)
+            Plotly.restyle(connectionChartDiv, { x: [edges_x], y: [edges_y] }, 0);
+            // Update node trace (trace 1)
+            Plotly.restyle(connectionChartDiv, { 
+                x: [opinions.map(op => op[0])], 
+                y: [opinions.map(op => op[1])], 
+                'marker.color': [node_colors] 
+            }, 1);
+        } catch (err) {
+            console.error("Plotly.restyle failed for connection chart:", err);
+        }
     }
     // --- End Connection Chart Functions ---
 
@@ -283,19 +290,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateUpdatesLog(updatesArray) {
         if (!updatesLogDiv) return;
-        updatesLogDiv.innerHTML = '';
+        // Append new updates instead of replacing all (for staggered responses)
         updatesArray.forEach(updateMsg => {
             const itemDiv = document.createElement('div');
             itemDiv.classList.add('update-item');
             itemDiv.textContent = updateMsg;
             updatesLogDiv.appendChild(itemDiv);
+            
+            // Auto-scroll to show latest update
+            updatesLogDiv.scrollTop = updatesLogDiv.scrollHeight;
         });
     }
 
     async function sendMessage() {
         const messageText = messageInput.value.trim();
         if (messageText && socket && socket.readyState === WebSocket.OPEN) {
-            // Optimistic UI update is removed here, backend will broadcast the user's message
+            // Optimistic UI update - show user's message immediately
+            const userMessage = {
+                sender_name: agentNames[userAgentIndex] || "User",
+                sender_index: userAgentIndex,
+                message: messageText,
+                opinion_vector: currentOpinions[userAgentIndex] || [0.5, 0.5]
+            };
+            addFeedMessage(userMessage);
+            
+            // Clear input immediately for better UX
+            messageInput.value = '';
+            
             try {
                 const response = await fetch('/api/send_message', {
                     method: 'POST',
@@ -311,7 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error("Error sending message:", error);
                 addFeedMessage({ sender_name: "System", sender_index: -1, message: "Network error sending message.", opinion_vector: [0.5,0.5]});
             }
-            messageInput.value = '';
         } else if (!messageText) {
             console.log("Message is empty.");
         } else {
