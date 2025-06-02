@@ -2,7 +2,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const elements = {
         opinionChart: document.getElementById('opinion-chart'),
         connectionChart: document.getElementById('connection-chart'),
-        feedMessages: document.getElementById('feed-messages'),
+        feedMessages: document.getElementById('feed'),
         updatesLog: document.getElementById('updates-log'),
         messageInput: document.getElementById('message-input'),
         sendButton: document.getElementById('send-button'),
