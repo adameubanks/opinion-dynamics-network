@@ -1,0 +1,9 @@
+services:
+  opinion-app:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    container_name: opinion_dynamics_app

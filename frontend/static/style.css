@@ -1,0 +1,169 @@
+/* Basic Reset */
+body, h1, h2, h3, p, div, input, button, label {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: #f0f2f5;
+    color: #1c1e21;
+    line-height: 1.6;
+    display: flex;
+    justify-content: center;
+    padding-top: 20px;
+}
+
+.app-container {
+    display: flex;
+    width: 95%;
+    max-width: 1600px;
+    height: 90vh; /*占める画面の高さ*/
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1);
+    overflow: hidden; /* Child elements will be clipped if they overflow */
+}
+
+.main-content {
+    flex-grow: 3; /* Takes 3 parts of space */
+    display: flex;
+    flex-direction: row;
+    border-right: 1px solid #dddfe2;
+    overflow: hidden; /* Prevent content from breaking layout */
+}
+
+#feed-container {
+    flex-basis: 420px; /* Fixed width like original */
+    min-width: 300px; /* Minimum width before squishing */
+    max-width: 500px; /* Max width */
+    flex-shrink: 0; /* Don't shrink */
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dddfe2;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+#visualization-container {
+    flex-grow: 1; /* Takes remaining space in main-content */
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    overflow: hidden; /* Important for Plotly chart */
+}
+
+.sidebar {
+    flex-basis: 250px; /* Fixed width */
+    min-width: 200px;
+    flex-shrink: 0; /* Don't shrink */
+    display: flex;
+    flex-direction: column;
+    padding: 10px;
+    background-color: #f5f7f9;
+}
+
+#feed-container h2, #visualization-container h2, .sidebar h2 {
+    font-size: 1.2em;
+    color: #333;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.scrollable-feed, .scrollable-updates {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 5px;
+    background-color: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.feed-input-area {
+    display: flex;
+    margin-top: auto; /* Pushes to the bottom of flex container */
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px 0 0 4px;
+    font-size: 0.9em;
+}
+
+#send-button {
+    padding: 8px 15px;
+    background-color: #1877f2; /* Facebook blue */
+    color: white;
+    border: none;
+    border-radius: 0 4px 4px 0;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+#send-button:hover {
+    background-color: #166fe5;
+}
+
+#opinion-chart, #connection-chart {
+    flex-grow: 1; /* Chart takes available space in its container */
+    min-height: 300px; /* Minimum height for the chart */
+    width: 100%;
+}
+
+#connection-chart {
+    margin-top: 10px; /* Add some space above the connection chart */
+}
+
+#controls-panel {
+    margin-top: 15px;
+}
+
+#controls-panel button, #controls-panel label, #controls-panel input {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+}
+
+#reset-button {
+    background-color: #dc3545;
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#reset-button:hover {
+    background-color: #c82333;
+}
+
+.feed-post {
+    padding: 8px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    background-color: #e9ebee;
+    border-left: 4px solid transparent; /* For sender color hint */
+}
+
+.feed-post .sender-name {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+/* Example border colors for posts - to be set by JS */
+/* .user-post { border-left-color: gold !important; } */
+/* .strategic-post { border-left-color: black !important; } */
+/* .normal-post { border-left-color: gray !important; } */
+
+/* Specific styling for updates log items */
+#updates-log .update-item {
+    font-size: 0.85em;
+    padding: 4px;
+    border-bottom: 1px dotted #eee;
+}
+#updates-log .update-item:last-child {
+    border-bottom: none;
+} 
