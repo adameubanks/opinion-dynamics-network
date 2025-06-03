@@ -32,7 +32,7 @@ SIM_PARAMS = {
     "alpha_filter": 1.0,
     "user_agents_initial_opinion": [[0.5]],
     "user_alpha": 0.5,
-    "strategic_agents_initial_opinion_targets": [],
+    "strategic_agents_initial_opinion_targets": [[0.5]],
     "strategic_theta": -1.5,
     "time_between_posts": 8.0,
     "updates_per_cycle": 5,
