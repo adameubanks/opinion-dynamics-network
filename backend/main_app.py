@@ -26,20 +26,20 @@ PROJECT_ROOT = BACKEND_DIR.parent
 SIM_PARAMS = {
     "seed": 40,
     "n_agents": 20,
-    "n_opinions": 2,
+    "n_opinions": 1,
     "theta": 5.0,
     "min_prob": 0.03,
     "alpha_filter": 1.0,
-    "user_agents_initial_opinion": [[0.5, 0.5]],
+    "user_agents_initial_opinion": [[0.5]],
     "user_alpha": 0.5,
     "strategic_agents_initial_opinion_targets": [],
     "strategic_theta": -1.5,
-    "time_between_posts": 0.1,
+    "time_between_posts": 8.0,
     "updates_per_cycle": 5,
     "posts_per_cycle": 3,
     "init_updates": 0,
     "include_strategic_agents": True,
-    "loop_sleep_time": 0.5
+    "loop_sleep_time": 5.0
 }
 
 OPINION_AXES = [
@@ -47,11 +47,6 @@ OPINION_AXES = [
         'name': 'Pineapple on Pizza',
         'pro': 'Pineapple on pizza is the best possible pizza topping',
         'con': 'Pineapple on pizza is the worst possible pizza topping'
-    },
-    {
-        'name': 'Cats',
-        'pro': 'Cats are the best possible pet',
-        'con': 'Cats are the worst possible pet'
     }
 ]
 
@@ -67,6 +62,7 @@ poster_instance: Poster | None = None
 simulation_task: asyncio.Task | None = None
 current_bot_names = BOT_NAMES_BASE[:SIM_PARAMS["n_agents"]].copy()
 user_posted_this_cycle_flag = False
+simulation_running = False
 
 class ConnectionManager:
     def __init__(self):
@@ -99,7 +95,7 @@ def setup_simulation_parameters(include_strategic: bool):
     num_total_agents = SIM_PARAMS["n_agents"] 
 
     if include_strategic:
-        SIM_PARAMS["strategic_agents_initial_opinion_targets"] = [[0.0, 1.0], [1.0, 0.5]]
+        SIM_PARAMS["strategic_agents_initial_opinion_targets"] = [[0.0], [1.0]]
         num_strategic_agents = len(SIM_PARAMS["strategic_agents_initial_opinion_targets"])
         num_base_names_needed = num_total_agents - num_strategic_agents
         active_bot_names = list(BOT_NAMES_BASE[:num_base_names_needed]) + BOT_NAMES_STRATEGIC_DEFAULT[:num_strategic_agents]
@@ -129,7 +125,7 @@ def setup_simulation_parameters(include_strategic: bool):
             final_bot_names[i] = f"Agent {i}"
     
     current_bot_names = np.array(final_bot_names)
-    SIM_PARAMS["user_agents_initial_opinion"] = [[0.5, 0.5]]
+    SIM_PARAMS["user_agents_initial_opinion"] = [[0.5]]
 
 def initialize_network_and_poster():
     global network_instance, poster_instance, SIM_PARAMS, OPINION_AXES, current_bot_names, USE_DUMMY_POSTER
@@ -140,10 +136,8 @@ def initialize_network_and_poster():
     random.seed(SIM_PARAMS["seed"])
 
     init_opinion_one = beta.rvs(a=2, b=2, size=SIM_PARAMS["n_agents"], random_state=SIM_PARAMS["seed"])
-    init_opinion_two = beta.rvs(a=14, b=7, size=SIM_PARAMS["n_agents"], random_state=SIM_PARAMS["seed"])
     np.random.shuffle(init_opinion_one) 
-    np.random.shuffle(init_opinion_two)
-    init_X = np.column_stack((init_opinion_one, init_opinion_two))
+    init_X = init_opinion_one.reshape(-1, 1)
     
     if SIM_PARAMS["user_agents_initial_opinion"] and SIM_PARAMS["n_agents"] > 0 and init_X.shape[0] > 0:
         init_X[0] = SIM_PARAMS["user_agents_initial_opinion"][0]
@@ -170,8 +164,6 @@ def initialize_network_and_poster():
 async def lifespan(app_instance: FastAPI):
     global simulation_task, network_instance, poster_instance
     initialize_network_and_poster()
-    if network_instance and poster_instance:
-        simulation_task = asyncio.create_task(simulation_loop_task())
     
     yield
     
@@ -190,15 +182,14 @@ def _calculate_color_scaling_params(X_opinions: np.ndarray, sim_config: dict) ->
 
     normal_agent_indices = list(range(1, n_agents - num_strategic))
 
-    x_min, x_max, y_min, y_max = 0.0, 1.0, 0.0, 1.0
+    x_min, x_max = 0.0, 1.0
 
-    if normal_agent_indices and X_opinions.ndim == 2 and X_opinions.shape[0] == n_agents and X_opinions.shape[1] >= 2:
+    if normal_agent_indices and X_opinions.ndim == 2 and X_opinions.shape[0] == n_agents and X_opinions.shape[1] >= 1:
         valid_normal_indices = [idx for idx in normal_agent_indices if idx < X_opinions.shape[0]]
         if not valid_normal_indices:
-             return {"x_min": x_min, "x_max": x_max, "y_min": y_min, "y_max": y_max}
+             return {"x_min": x_min, "x_max": x_max}
 
         normal_opinions_x = X_opinions[valid_normal_indices, 0]
-        normal_opinions_y = X_opinions[valid_normal_indices, 1]
 
         if normal_opinions_x.size > 0:
             x_min_val, x_max_val = float(normal_opinions_x.min()), float(normal_opinions_x.max())
@@ -206,15 +197,8 @@ def _calculate_color_scaling_params(X_opinions: np.ndarray, sim_config: dict) ->
             x_max = x_max_val if x_min_val < x_max_val else (x_max_val + 0.01 if x_max_val < 1 else 1.0)
             if x_min == x_max:
                 x_min, x_max = 0.0, 1.0
-
-        if normal_opinions_y.size > 0:
-            y_min_val, y_max_val = float(normal_opinions_y.min()), float(normal_opinions_y.max())
-            y_min = y_min_val if y_min_val < y_max_val else (y_min_val - 0.01 if y_min_val > 0 else 0.0)
-            y_max = y_max_val if y_min_val < y_max_val else (y_max_val + 0.01 if y_max_val < 1 else 1.0)
-            if y_min == y_max:
-                y_min, y_max = 0.0, 1.0
                 
-    return {"x_min": x_min, "x_max": x_max, "y_min": y_min, "y_max": y_max}
+    return {"x_min": x_min, "x_max": x_max}
 
 def _create_simulation_state_payload(current_network_instance: Network, 
                                      sim_params_config: dict, 
@@ -248,6 +232,9 @@ class UserMessage(BaseModel):
 class ResetConfig(BaseModel):
     include_strategic_agents: bool | None = None
     seed: int | None = None
+
+class SimulationControl(BaseModel):
+    action: str
 
 @app.get("/api/initial_state")
 async def get_initial_state_api():
@@ -285,11 +272,6 @@ async def send_staggered_agent_responses(user_agent_index: int, current_A: np.nd
             update_message = f"{agent_name} read your post."
         else:
             update_message = f"{agent_name} ignored your post."
-        
-        try:
-            await manager.broadcast_json({"type": "updates_log", "data": [update_message]})
-        except Exception as e:
-            pass
         
         base_delay = 0.2 + (i * 0.05)
         random_variance = random.uniform(-0.1, 0.3)
@@ -336,7 +318,7 @@ async def send_user_message(user_message: UserMessage):
 
 @app.post("/api/reset_simulation")
 async def reset_simulation_api(config: ResetConfig):
-    global simulation_task, network_instance, poster_instance, SIM_PARAMS, current_bot_names, OPINION_AXES, user_posted_this_cycle_flag
+    global simulation_task, network_instance, poster_instance, SIM_PARAMS, current_bot_names, OPINION_AXES, user_posted_this_cycle_flag, simulation_running
     
     if simulation_task and not simulation_task.done():
         simulation_task.cancel()
@@ -347,6 +329,8 @@ async def reset_simulation_api(config: ResetConfig):
         finally:
             simulation_task = None 
 
+    simulation_running = False
+
     if config.include_strategic_agents is not None:
         SIM_PARAMS["include_strategic_agents"] = config.include_strategic_agents
     if config.seed is not None: 
@@ -356,8 +340,6 @@ async def reset_simulation_api(config: ResetConfig):
     user_posted_this_cycle_flag = False
 
     if network_instance and poster_instance:
-        simulation_task = asyncio.create_task(simulation_loop_task())
-        
         try:
             full_state_payload = _create_simulation_state_payload(
                 network_instance, 
@@ -375,6 +357,42 @@ async def reset_simulation_api(config: ResetConfig):
     else:
         raise HTTPException(status_code=500, detail="Failed to re-initialize simulation after reset.")
 
+@app.post("/api/control_simulation")
+async def control_simulation(control: SimulationControl):
+    global simulation_task, simulation_running, network_instance, poster_instance
+    
+    if control.action == "start":
+        if not simulation_running and network_instance and poster_instance:
+            simulation_running = True
+            if simulation_task is None or simulation_task.done():
+                simulation_task = asyncio.create_task(simulation_loop_task())
+            return {"status": "started", "message": "Simulation started"}
+        else:
+            return {"status": "already_running", "message": "Simulation is already running"}
+    
+    elif control.action == "stop":
+        if simulation_running:
+            simulation_running = False
+            if simulation_task and not simulation_task.done():
+                simulation_task.cancel()
+                try:
+                    await simulation_task
+                except asyncio.CancelledError:
+                    pass
+                finally:
+                    simulation_task = None
+            return {"status": "stopped", "message": "Simulation stopped"}
+        else:
+            return {"status": "already_stopped", "message": "Simulation is already stopped"}
+    
+    else:
+        raise HTTPException(status_code=400, detail="Invalid action. Use 'start' or 'stop'")
+
+@app.get("/api/simulation_status")
+async def get_simulation_status():
+    global simulation_running
+    return {"running": simulation_running}
+
 @app.websocket("/ws/simulation_updates")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
@@ -389,12 +407,12 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 async def simulation_loop_task():
-    global network_instance, poster_instance, SIM_PARAMS, current_bot_names, manager, user_posted_this_cycle_flag
+    global network_instance, poster_instance, SIM_PARAMS, current_bot_names, manager, user_posted_this_cycle_flag, simulation_running
     
     if not network_instance or not poster_instance:
         return
 
-    while True: 
+    while simulation_running: 
         try:
             user_acted_this_cycle = user_posted_this_cycle_flag
             if user_acted_this_cycle:
@@ -434,7 +452,7 @@ async def simulation_loop_task():
                 random.shuffle(posting_bots_indices)
 
                 for agent_idx in posting_bots_indices:
-                    if not network_instance: break 
+                    if not network_instance or not simulation_running: break 
                     agent_opinion = X_state[agent_idx]
                     agent_name = current_bot_names[agent_idx] if agent_idx < len(current_bot_names) else f"Agent {agent_idx}"
                     
@@ -467,12 +485,12 @@ async def simulation_loop_task():
                             "data": {"message": f"System: Error with {agent_name}'s post."}
                         })
 
-            if network_instance:
+            if network_instance and simulation_running:
                 for i in range(SIM_PARAMS.get("updates_per_cycle", 1)):
-                    if not network_instance: break 
+                    if not network_instance or not simulation_running: break 
                     network_instance.update_network(include_user_opinions=user_acted_this_cycle if i == 0 else False)
 
-            if network_instance:
+            if network_instance and simulation_running:
                 X_updated, A_updated, _ = network_instance.get_state()
                 current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
                 
@@ -489,6 +507,8 @@ async def simulation_loop_task():
             break
         except Exception as e:
             await asyncio.sleep(1) 
+
+    simulation_running = False
 
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "frontend" / "static"), name="static")
 

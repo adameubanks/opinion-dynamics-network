@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opinion Dynamics Network</title>
     <link rel="stylesheet" href="static/style.css">
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -19,9 +19,7 @@
                 </div>
             </div>
             <div id="visualization-container">
-                <h2>Opinion Dynamics</h2>
-                <div id="opinion-chart"></div>
-                <h2>Network Connections</h2>
+                <h2>Social Network</h2>
                 <div id="connection-chart"></div>
             </div>
         </div>
@@ -31,8 +29,6 @@
                 <p id="connection-status">Disconnected</p>
                 <p id="simulation-status">Stopped</p>
             </div>
-            <h2>Updates Log</h2>
-            <div class="scrollable-updates" id="updates-log"></div>
             <div id="controls-panel">
                 <label for="toggle-simulation">Simulation:</label>
                 <button id="toggle-simulation">Start Simulation</button>

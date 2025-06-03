@@ -7,8 +7,8 @@ body, h1, h2, h3, p, div, input, button, label {
 }
 
 body {
-    background-color: #f0f2f5;
-    color: #1c1e21;
+    background-color: #1a1a1a;
+    color: #e0e0e0;
     line-height: 1.6;
     display: flex;
     justify-content: center;
@@ -20,9 +20,9 @@ body {
     width: 95%;
     max-width: 1600px;
     height: 90vh; /*占める画面の高さ*/
-    background-color: #fff;
+    background-color: #2d2d2d;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.3);
     overflow: hidden; /* Child elements will be clipped if they overflow */
 }
 
@@ -30,7 +30,7 @@ body {
     flex-grow: 3; /* Takes 3 parts of space */
     display: flex;
     flex-direction: row;
-    border-right: 1px solid #dddfe2;
+    border-right: 1px solid #3a3a3a;
     overflow: hidden; /* Prevent content from breaking layout */
 }
 
@@ -41,9 +41,9 @@ body {
     flex-shrink: 0; /* Don't shrink */
     display: flex;
     flex-direction: column;
-    border-right: 1px solid #dddfe2;
+    border-right: 1px solid #3a3a3a;
     padding: 10px;
-    background-color: #f9f9f9;
+    background-color: #252525;
 }
 
 #visualization-container {
@@ -61,23 +61,23 @@ body {
     display: flex;
     flex-direction: column;
     padding: 10px;
-    background-color: #f5f7f9;
+    background-color: #1f1f1f;
 }
 
 #feed-container h2, #visualization-container h2, .sidebar h2 {
     font-size: 1.2em;
-    color: #333;
+    color: #e0e0e0;
     margin-bottom: 10px;
     padding-bottom: 5px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #3a3a3a;
 }
 
 .scrollable-feed, .scrollable-updates {
     flex-grow: 1;
     overflow-y: auto;
     padding: 5px;
-    background-color: #fff;
-    border: 1px solid #e0e0e0;
+    background-color: #2d2d2d;
+    border: 1px solid #3a3a3a;
     border-radius: 4px;
     margin-bottom: 10px;
 }
@@ -90,9 +90,11 @@ body {
 #message-input {
     flex-grow: 1;
     padding: 8px 10px;
-    border: 1px solid #ccc;
+    border: 1px solid #3a3a3a;
     border-radius: 4px 0 0 4px;
     font-size: 0.9em;
+    background-color: #2d2d2d;
+    color: #e0e0e0;
 }
 
 #send-button {
@@ -108,14 +110,10 @@ body {
     background-color: #166fe5;
 }
 
-#opinion-chart, #connection-chart {
-    flex-grow: 1; /* Chart takes available space in its container */
-    min-height: 300px; /* Minimum height for the chart */
-    width: 100%;
-}
-
 #connection-chart {
-    margin-top: 10px; /* Add some space above the connection chart */
+    flex-grow: 1;
+    min-height: 400px;
+    width: 100%;
 }
 
 #controls-panel {
@@ -126,6 +124,7 @@ body {
     display: block;
     width: 100%;
     margin-bottom: 8px;
+    color: #e0e0e0;
 }
 
 #reset-button {
@@ -140,12 +139,35 @@ body {
     background-color: #c82333;
 }
 
+#toggle-simulation {
+    color: white;
+    padding: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.simulation-start {
+    background-color: #28a745;
+}
+.simulation-start:hover {
+    background-color: #218838;
+}
+
+.simulation-stop {
+    background-color: #dc3545;
+}
+.simulation-stop:hover {
+    background-color: #c82333;
+}
+
 .feed-post {
     padding: 8px;
     margin-bottom: 8px;
     border-radius: 4px;
-    background-color: #e9ebee;
+    background-color: #3a3a3a;
     border-left: 4px solid transparent; /* For sender color hint */
+    color: #e0e0e0;
 }
 
 .feed-post .sender-name {
@@ -153,17 +175,37 @@ body {
     margin-right: 5px;
 }
 
-/* Example border colors for posts - to be set by JS */
-/* .user-post { border-left-color: gold !important; } */
-/* .strategic-post { border-left-color: black !important; } */
-/* .normal-post { border-left-color: gray !important; } */
-
-/* Specific styling for updates log items */
-#updates-log .update-item {
-    font-size: 0.85em;
-    padding: 4px;
-    border-bottom: 1px dotted #eee;
+/* D3 Network Visualization Styles */
+.d3-network-container {
+    background: #1a1a1a;
+    border-radius: 8px;
+    width: 100%;
+    height: 100%;
 }
-#updates-log .update-item:last-child {
-    border-bottom: none;
-} 
+
+.network-node {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.network-edge {
+    stroke: #555555;
+    stroke-width: 2px;
+    opacity: 0.6;
+}
+
+.user-node {
+    filter: drop-shadow(0 0 8px #B8860B);
+}
+
+.strategic-node {
+    filter: drop-shadow(0 0 6px #696969);
+}
+
+.avatar-head {
+    transition: all 0.3s ease;
+}
+
+.avatar-body {
+    transition: all 0.3s ease;
+}
