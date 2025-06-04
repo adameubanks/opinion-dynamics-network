@@ -26,7 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
         linkElements: null,
         nodeElements: null,
         currentInfluences: [],
-        networkWidth: 0
+        networkWidth: 0,
+        currentEdgeWeights: []
     };
 
     let socket;
@@ -109,9 +110,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.currentOpinions = message.data;
                 if (message.color_scaling_params) state.colorScalingParams = message.color_scaling_params;
                 if (message.adjacency_matrix) state.currentAdjacencyMatrix = message.adjacency_matrix;
+                if (message.edge_weights) state.currentEdgeWeights = message.edge_weights;
                 if (state.currentOpinions && state.currentOpinions.length > 0) {
                     if (state.currentAdjacencyMatrix && state.currentAdjacencyMatrix.length > 0) {
-                        updateConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix);
+                        updateConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.currentEdgeWeights);
                     }
                 }
             } else if (message.type === 'new_post') {
@@ -119,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (message.type === 'initial_state_full' || message.type === 'reset_complete') {
                 initializeSimulationState(message.data);
                 if (state.currentAdjacencyMatrix && state.currentAdjacencyMatrix.length > 0) {
-                    initializeConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes);
+                    initializeConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
                 }
             } else if (message.type === 'system_message') {
                 addFeedMessage({ 
@@ -147,7 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeSimulationState(initialState);
             if (initialState.adjacency_matrix && initialState.adjacency_matrix.length > 0) {
                 state.currentAdjacencyMatrix = initialState.adjacency_matrix;
-                initializeConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes);
+                initializeConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
             }
         } catch (error) {
             console.error("Failed to fetch initial state:", error);
@@ -166,6 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.colorScalingParams = stateData.color_scaling_params || {x_min:0, x_max:1};
         if(elements.strategicCheckbox) elements.strategicCheckbox.checked = state.includeStrategicAgents;
         state.currentAdjacencyMatrix = stateData.adjacency_matrix || [];
+        state.currentEdgeWeights = stateData.edge_weights || [];
 
         // Reset D3 simulation state
         if (state.simulation) {
@@ -332,21 +335,26 @@ document.addEventListener('DOMContentLoaded', () => {
             id: i,
             name: agentNames[i] || `Agent ${i}`,
             opinion: opinion[0],
-            x: Math.random() * 700 + 50,
-            y: Math.random() * 500 + 50,
+            x: 100 + (600 * opinion[0]) + (Math.random() - 0.5) * 50,
+            y: 250 + (Math.random() - 0.5) * 200,
             isUser: i === state.userAgentIndex,
             isStrategic: state.includeStrategicAgents && i >= state.nAgents - state.strategicAgentCount
         }));
     }
 
-    function createD3Links(adjMatrix) {
+    function createD3Links(adjMatrix, edgeWeights) {
         const links = [];
         for (let i = 0; i < adjMatrix.length; i++) {
             for (let j = i + 1; j < adjMatrix[i].length; j++) {
                 if (adjMatrix[i][j] === 1) {
+                    const weight = edgeWeights && edgeWeights[i] && edgeWeights[i][j] ? edgeWeights[i][j] : 0.5;
                     links.push({
                         source: i,
-                        target: j
+                        target: j,
+                        weight: weight,
+                        distance: Math.max(30, 200 * (1 - weight)), // Stronger variation: closer opinions = much shorter distance
+                        opacity: Math.max(0.2, weight), // Higher weight = more visible
+                        thickness: Math.max(0.5, weight * 5) // Higher weight = much thicker line
                     });
                 }
             }
@@ -377,56 +385,47 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function applyPolarizationForce(extremeness) {
         if (state.simulation && extremeness > 0.4) {
-            console.log(`Applying HIGH polarization force (extremeness: ${extremeness.toFixed(3)})`);
-            // Very strong polarization force for high extremeness
-            state.simulation.force('opinion_cluster').strength(2.0);
-            state.simulation.force('x').strength(0.01);
-            state.simulation.force('charge').strength(-300);
-            state.simulation.force('center').strength(0.01);
-            state.simulation.alpha(1.0).restart();
+            console.log(`Applying EXTREME polarization force (extremeness: ${extremeness.toFixed(3)})`);
+            // Extreme polarization - push to far edges
+            state.simulation.force('opinion_cluster').strength(4.0);
+            state.simulation.force('charge').strength(-500);
+            state.simulation.alpha(2.0).restart();
             
             setTimeout(() => {
                 if (state.simulation) {
-                    state.simulation.force('opinion_cluster').strength(0.1);
-                    state.simulation.force('x').strength(0.05);
-                    state.simulation.force('charge').strength(-100);
-                    state.simulation.force('center').strength(0.02);
+                    state.simulation.force('opinion_cluster').strength(3.0);
+                    state.simulation.force('charge').strength(-400);
+                    state.simulation.alpha(1.5).restart();
                 }
-            }, 20000);
+            }, 15000);
         } else if (state.simulation && extremeness >= 0.2) {
-            console.log(`Applying MEDIUM adjustment force (extremeness: ${extremeness.toFixed(3)})`);
-            // Strong medium adjustment force 
-            state.simulation.force('opinion_cluster').strength(1.0);
-            state.simulation.force('center').strength(0.05);
-            state.simulation.force('charge').strength(-200);
-            state.simulation.force('x').strength(0.02);
-            state.simulation.alpha(0.8).restart();
+            console.log(`Applying STRONG polarization force (extremeness: ${extremeness.toFixed(3)})`);
+            // Strong polarization
+            state.simulation.force('opinion_cluster').strength(3.5);
+            state.simulation.force('charge').strength(-450);
+            state.simulation.alpha(1.8).restart();
             
             setTimeout(() => {
                 if (state.simulation) {
-                    state.simulation.force('opinion_cluster').strength(0.1);
-                    state.simulation.force('center').strength(0.02);
-                    state.simulation.force('charge').strength(-100);
-                    state.simulation.force('x').strength(0.05);
-                }
-            }, 8000);
-        } else if (state.simulation) {
-            console.log(`Applying LOW moderation force (extremeness: ${extremeness.toFixed(3)})`);
-            // Very strong moderation force for low extremeness
-            state.simulation.force('opinion_cluster').strength(0.02);
-            state.simulation.force('center').strength(1.0);
-            state.simulation.force('charge').strength(-50);
-            state.simulation.force('x').strength(0.01);
-            state.simulation.alpha(0.8).restart();
-            
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('opinion_cluster').strength(0.1);
-                    state.simulation.force('center').strength(0.02);
-                    state.simulation.force('charge').strength(-100);
-                    state.simulation.force('x').strength(0.05);
+                    state.simulation.force('opinion_cluster').strength(2.8);
+                    state.simulation.force('charge').strength(-350);
+                    state.simulation.alpha(1.2).restart();
                 }
             }, 10000);
+        } else if (state.simulation) {
+            console.log(`Applying MODERATE clustering force (extremeness: ${extremeness.toFixed(3)})`);
+            // Moderate clustering - still very strong
+            state.simulation.force('opinion_cluster').strength(3.0);
+            state.simulation.force('charge').strength(-400);
+            state.simulation.alpha(1.5).restart();
+            
+            setTimeout(() => {
+                if (state.simulation) {
+                    state.simulation.force('opinion_cluster').strength(2.5);
+                    state.simulation.force('charge').strength(-300);
+                    state.simulation.alpha(1.0).restart();
+                }
+            }, 8000);
         }
     }
 
@@ -495,19 +494,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // Check if this node is being influenced
             const influence = state.currentInfluences.find(inf => inf.targetIndex === d.id);
             if (!influence) {
-                return networkWidth / 2; // Default center position
+                // Use normal opinion clustering for non-influenced agents
+                return networkWidth * 0.05 + (networkWidth * 0.9 * d.opinion);
             }
             
-            // Calculate target position based on influence
+            // Calculate more extreme target position based on influence
             if (influence.influenceType === 'moderating') {
-                // Pull toward center
-                return networkWidth / 2;
+                // Pull toward center but not too strongly
+                return networkWidth * 0.4 + (networkWidth * 0.2 * d.opinion);
             } else {
-                // Push toward poster's opinion direction
+                // Push toward extreme ends based on influence direction
                 if (influence.direction === 'positive') {
-                    return networkWidth * 0.8; // Toward right (high opinion)
+                    return networkWidth * 0.85; // Far right (high opinion)
                 } else {
-                    return networkWidth * 0.2; // Toward left (low opinion)
+                    return networkWidth * 0.15; // Far left (low opinion)
                 }
             }
         };
@@ -524,26 +524,35 @@ document.addEventListener('DOMContentLoaded', () => {
     function scheduleForceDecay(duration = 10000) {
         if (!state.simulation) return;
         
-        // Apply strong initial force
+        // Apply very strong initial influence force
         const influenceForce = state.simulation.force('influence');
         if (influenceForce) {
-            influenceForce.strength(1.5);
-            state.simulation.alpha(0.8).restart();
+            influenceForce.strength(3.0); // Much stronger influence
+            state.simulation.alpha(1.5).restart(); // Very aggressive restart
             
-            console.log(`Applied strong influence force, scheduling decay over ${duration}ms`);
+            console.log(`Applied STRONG influence force, scheduling decay over ${duration}ms`);
             
-            // Gradually reduce force strength
+            // Gradually reduce force strength but keep it strong
             setTimeout(() => {
                 if (state.simulation) {
-                    state.simulation.force('influence').strength(0.5);
+                    state.simulation.force('influence').strength(2.0);
+                    state.simulation.alpha(1.0).restart();
                 }
-            }, duration * 0.3);
+            }, duration * 0.2);
             
             setTimeout(() => {
                 if (state.simulation) {
-                    state.simulation.force('influence').strength(0.1);
+                    state.simulation.force('influence').strength(1.0);
+                    state.simulation.alpha(0.8).restart();
                 }
-            }, duration * 0.7);
+            }, duration * 0.5);
+            
+            setTimeout(() => {
+                if (state.simulation) {
+                    state.simulation.force('influence').strength(0.3);
+                    state.simulation.alpha(0.5).restart();
+                }
+            }, duration * 0.8);
             
             setTimeout(() => {
                 clearInfluenceForces();
@@ -561,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return createD3Links(adjMatrix);
     }
 
-    function initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo) {
+    function initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights) {
         if (!elements.connectionChart || !opinions || opinions.length === 0 || !adjMatrix || adjMatrix.length === 0) {
             if(elements.connectionChart) elements.connectionChart.innerHTML = "<p>Waiting for connection data...</p>";
             return;
@@ -575,16 +584,17 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Create nodes and links data
         const nodes = createD3Nodes(opinions, agentNamesArr);
-        const links = createD3Links(adjMatrix);
+        const links = createD3Links(adjMatrix, edgeWeights);
         
-        // Setup force simulation
+        console.log(`Initializing network: ${nodes.length} agents, ${links.length} initial connections`);
+        console.log(`Initial connections:`, links.map(l => `${l.source}-${l.target} (weight: ${l.weight.toFixed(3)})`));
+        
+        // Setup force simulation with extreme polarization - NO CENTER FORCE
         state.simulation = d3.forceSimulation(nodes)
-            .force("link", d3.forceLink(links).id(d => d.id).strength(0.2))
-            .force("charge", d3.forceManyBody().strength(-80))
-            .force("center", d3.forceCenter(width/2, height/2).strength(0.01))
-            .force("collision", d3.forceCollide().radius(25))
-            .force("opinion_cluster", d3.forceX(d => width * 0.2 + (width * 0.6 * d.opinion)).strength(0.05))
-            .force("x", d3.forceX(width/2).strength(0.03))
+            .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.distance).strength(d => d.weight * 0.1)) // Weaker links
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("collision", d3.forceCollide().radius(15)) // Smaller collision radius
+            .force("opinion_cluster", d3.forceX(d => width * 0.05 + (width * 0.9 * d.opinion)).strength(2.5)) // Much stronger
             .force("influence", d3.forceX().strength(0));
 
         // Create link elements
@@ -592,7 +602,10 @@ document.addEventListener('DOMContentLoaded', () => {
             .data(links)
             .enter()
             .append('line')
-            .attr('class', 'network-edge');
+            .attr('class', 'network-edge')
+            .attr('stroke-width', d => d.thickness)
+            .attr('stroke-opacity', d => d.opacity)
+            .attr('stroke', '#999');
 
         // Create node elements
         const nodeElements = nodeGroup.selectAll('.network-node')
@@ -629,12 +642,12 @@ document.addEventListener('DOMContentLoaded', () => {
         state.nodePositions = nodes;
     }
 
-    function initializeConnectionChart(opinions, adjMatrix, agentNamesArr, opinionAxesInfo) {
+    function initializeConnectionChart(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights) {
         // Replace with D3 implementation
-        return initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo);
+        return initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights);
     }
 
-    function updateD3Network(opinions, adjMatrix) {
+    function updateD3Network(opinions, adjMatrix, edgeWeights) {
         if (!elements.connectionChart || !opinions || opinions.length === 0 || !adjMatrix || adjMatrix.length === 0 || !state.simulation) return;
         
         // Update node data with new opinions
@@ -644,23 +657,38 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        // Update links if adjacency matrix changed
-        const newLinks = createD3Links(adjMatrix);
+        // Update links with new edge weights
+        const newLinks = createD3Links(adjMatrix, edgeWeights);
+        console.log(`Network update: ${newLinks.length} connections, avg weight: ${newLinks.length > 0 ? (newLinks.reduce((sum, link) => sum + link.weight, 0) / newLinks.length).toFixed(3) : 0}`);
         
         // Update force simulation with new data
         state.simulation.nodes(state.nodePositions);
-        state.simulation.force("link").links(newLinks);
+        state.simulation.force("link").links(newLinks).distance(d => d.distance).strength(d => d.weight * 0.1); // Weaker links
         
-        // Restart simulation
-        state.simulation.alpha(0.3).restart();
+        // Restart simulation much more aggressively for dramatic changes
+        state.simulation.alpha(1.5).restart();
+        
+        // Immediately boost polarization forces during updates
+        state.simulation.force('opinion_cluster').strength(3.0); // Even stronger during updates
+        
+        setTimeout(() => {
+            if (state.simulation) {
+                state.simulation.force('opinion_cluster').strength(2.5); // Back to strong default
+                state.simulation.alpha(1.0).restart();
+            }
+        }, 200);
         
         // Update visual elements
         if (state.linkElements && state.nodeElements) {
             // Update links
             const linkUpdate = state.linkElements.data(newLinks);
             linkUpdate.exit().remove();
-            const linkEnter = linkUpdate.enter().append('line').attr('class', 'network-edge');
-            state.linkElements = linkEnter.merge(linkUpdate);
+            const linkEnter = linkUpdate.enter().append('line')
+                .attr('class', 'network-edge')
+                .attr('stroke', '#999');
+            state.linkElements = linkEnter.merge(linkUpdate)
+                .attr('stroke-width', d => d.thickness)
+                .attr('stroke-opacity', d => d.opacity);
             
             // Update avatars with new colors and expressions based on opinions
             state.nodeElements.each(function(d, i) {
@@ -701,9 +729,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateConnectionChart(opinions, adjMatrix) {
+    function updateConnectionChart(opinions, adjMatrix, edgeWeights) {
         // Replace with D3 implementation
-        return updateD3Network(opinions, adjMatrix);
+        return updateD3Network(opinions, adjMatrix, edgeWeights);
     }
 
     function addFeedMessage(postData) {

@@ -1,7 +1,6 @@
 # chatgpt_interface.py
 import ast
 import random
-import os # For environment variable
 from openai import OpenAI
 
 class Poster:
@@ -81,9 +80,9 @@ class Poster:
         if not all(0 <= x <= 1 for x in opinion_vector):
             raise ValueError("All opinion values must be between 0 and 1")
         
-        base_prompt = "You are an old woman in a Facebook group with your friends."
+        base_prompt = "You are a Facebook user in a Facebook group with your friends."
         if is_agent:
-            base_prompt = "You are a sneaky russian spy pretending to be an old woman in a Facebook group with your friends. You want the other people in the group to be convinced of your opinion, but you still want them to like you and continue being your friend."
+            base_prompt = "You are a sneaky russian spy pretending to be a Facebook user in a Facebook group with your friends. You want the other people in the group to be convinced of your opinion, but you still want them to like you and continue being your friend."
         
         system_prompt = f"{base_prompt} Generate a SINGLE, NATURAL social media post (max 100 chars) that expresses your view on a topic.\n\n"
         system_prompt += "CRITICAL RULES:\n"

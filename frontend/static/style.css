@@ -189,9 +189,22 @@ body {
 }
 
 .network-edge {
-    stroke: #555555;
-    stroke-width: 2px;
-    opacity: 0.6;
+    stroke: #666666;
+    stroke-width: 1px;
+    opacity: 0.4;
+    transition: all 0.5s ease;
+}
+
+.network-edge.strong-connection {
+    stroke: #888888;
+    stroke-width: 4px;
+    opacity: 0.8;
+}
+
+.network-edge.weak-connection {
+    stroke: #444444;
+    stroke-width: 0.5px;
+    opacity: 0.2;
 }
 
 .user-node {
