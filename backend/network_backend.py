@@ -33,19 +33,49 @@ def get_W(s_norm, A):
     n = len(s_norm)
     return s_norm * A + np.identity(n) - diag((s_norm * A) @ np.ones(n))
 
-def create_similarity_connections(X, max_distance=0.3):
-    """Create adjacency matrix based on opinion similarity. Closer opinions = connected."""
+def create_hybrid_connections(X, max_distance=0.3, similarity_ratio=0.2, random_ratio=0.8, 
+                            target_avg_connections=8, target_std_connections=3):
+    """Create adjacency matrix with controlled connection count. Average 8 connections, std 3."""
     n = X.shape[0]
     A = np.zeros((n, n), dtype=int)
     
     for i in range(n):
-        for j in range(i + 1, n):
-            # Calculate opinion distance
-            opinion_distance = np.sqrt(np.sum((X[i] - X[j]) ** 2))
-            # Connect if within similarity threshold
-            if opinion_distance <= max_distance:
-                A[i, j] = 1
-                A[j, i] = 1
+        # Sample number of connections for this agent from normal distribution
+        num_connections = int(np.clip(np.random.normal(target_avg_connections, target_std_connections), 0, n-1))
+        
+        if num_connections == 0:
+            continue
+            
+        # Calculate similarity distances to all other agents
+        distances = []
+        for j in range(n):
+            if i != j:
+                opinion_distance = np.sqrt(np.sum((X[i] - X[j]) ** 2))
+                distances.append((j, opinion_distance))
+        
+        # Sort by similarity (closest opinions first)
+        distances.sort(key=lambda x: x[1])
+        
+        # Determine how many similarity-based vs random connections
+        num_similarity = int(num_connections * similarity_ratio)
+        num_random = num_connections - num_similarity
+        
+        # Get similarity-based connections (closest agents within max_distance)
+        similarity_candidates = [j for j, dist in distances if dist <= max_distance]
+        similarity_connections = similarity_candidates[:num_similarity]
+        
+        # Get random connections from remaining agents
+        remaining_agents = [j for j, _ in distances if j not in similarity_connections]
+        if len(remaining_agents) >= num_random:
+            random_connections = np.random.choice(remaining_agents, size=num_random, replace=False)
+        else:
+            random_connections = remaining_agents
+        
+        # Create connections (ensure symmetry)
+        all_connections = similarity_connections + list(random_connections)
+        for j in all_connections:
+            A[i, j] = 1
+            A[j, i] = 1
     
     return A
 
@@ -114,20 +144,21 @@ def same_side_of_center(opinion1, opinion2, center=0.5):
     return (opinion1 < center and opinion2 < center) or (opinion1 > center and opinion2 > center)
 
 class Network:
-    def __init__(self, n_agents=50, n_opinions=3, X=None, A=None, theta=7, min_prob=0.01, alpha_filter=0.5,
-                 user_agents=[], user_alpha=0.5, strategic_agents=[], strategic_theta=-100, max_connection_distance=0.3):
+    def __init__(self, n_agents=50, n_opinions=3, X=None, A=None, min_prob=0.01, alpha_filter=0.5,
+                 user_agents=[], user_alpha=0.5, strategic_agents=[], strategic_theta=-100, max_connection_distance=0.3,
+                 similarity_ratio=0.2, random_ratio=0.8):
         assert n_agents > 0 and isinstance(n_agents, (int, np.integer))
         assert n_opinions > 0 and isinstance(n_opinions, (int, np.integer))
-        assert theta >= 0
         assert 0 <= min_prob <= 1
         assert 0 < alpha_filter <= 1
 
         self.n_agents = n_agents
         self.n_opinions = n_opinions
-        self.theta = theta
         self.min_prob = min_prob
         self.alpha_filter = alpha_filter
         self.max_connection_distance = max_connection_distance
+        self.similarity_ratio = similarity_ratio
+        self.random_ratio = random_ratio
         self.time_step = 0
 
         if X is None:
@@ -160,8 +191,10 @@ class Network:
             self.X[i + self.n_agents - self.n_strategic_agents] = np.mean(self.X[:-self.n_strategic_agents], axis=0)
         self.strategic_agents = np.array(self.strategic_agents)
 
-        # Create similarity-based connectivity adjacency matrix
-        self.A = create_similarity_connections(self.X, max_distance=self.max_connection_distance)
+        # Create hybrid connectivity adjacency matrix
+        self.A = create_hybrid_connections(self.X, max_distance=self.max_connection_distance, 
+                                         similarity_ratio=self.similarity_ratio, random_ratio=self.random_ratio,
+                                         target_avg_connections=8, target_std_connections=3)
         
         # Calculate initial edge weights
         self.edge_weights = calculate_edge_weights(self.X)
@@ -188,7 +221,9 @@ class Network:
         self.X = self.alpha_filter * new_X + (1 - self.alpha_filter) * self.X
         
         # Update connections based on new opinion similarities
-        self.A = create_similarity_connections(self.X, max_distance=self.max_connection_distance)
+        self.A = create_hybrid_connections(self.X, max_distance=self.max_connection_distance,
+                                         similarity_ratio=self.similarity_ratio, random_ratio=self.random_ratio,
+                                         target_avg_connections=8, target_std_connections=3)
         
         # Update edge weights based on current opinions
         self.edge_weights = calculate_edge_weights(self.X)
@@ -200,43 +235,37 @@ class Network:
 
         return self.get_state()
 
-    def apply_user_post_influence(self, user_index, analyzed_opinion, influence_strength=0.1, second_degree_decay=0.3):
-        """Apply user post influence to connected agents with reduced strength for extreme posts."""
+    def apply_user_post_influence(self, user_index, analyzed_opinion, influence_strength=0.1):
+        """Simple polarization/depolarization based on post extremeness."""
         # Input validation
         assert 0 <= user_index < self.n_agents
         assert len(analyzed_opinion) == self.n_opinions
         assert 0 < influence_strength <= 1
-        assert 0 <= second_degree_decay <= 1
         
-        # Calculate influence vector (message drift)
-        current_user_opinion = self.X[user_index]
-        influence_vector = np.array(analyzed_opinion) - current_user_opinion
+        post_opinion = analyzed_opinion[0]  # Get the main opinion value
         
-        # Calculate connection matrices
-        A_squared = self.A @ self.A
+        # Determine if post is extreme or neutral
+        is_extreme = post_opinion < 0.4 or post_opinion > 0.6
         
-        # Create combined influence matrix (1st degree full, 2nd degree reduced)
-        influence_matrix = self.A + second_degree_decay * A_squared
-        
-        # Apply influence only from the posting user
-        user_influence_weights = influence_matrix[user_index]
-        
-        # Adjust influence strength based on post extremeness
-        post_opinion = analyzed_opinion[0]  # Assuming single opinion dimension for extremeness check
-        if is_extreme_opinion(post_opinion):
-            # Extreme post - use much smaller influence to create gradual polarization
-            effective_strength = influence_strength * 0.2  # 20% of normal strength
-        else:
-            # Neutral post - use normal influence strength for convergence
-            effective_strength = influence_strength
-        
-        # Apply influence to all agents based on their connection distance
+        # Apply influence to directly connected agents only
         for i in range(self.n_agents):
-            if user_influence_weights[i] > 0:  # Only influence connected agents
-                self.X[i] += effective_strength * user_influence_weights[i] * influence_vector
-        
-        # Ensure opinions stay within bounds [0, 1]
-        self.X = np.clip(self.X, 0, 1)
+            if self.A[user_index, i] == 1:  # Only influence directly connected agents
+                current_opinion = self.X[i, 0]  # Get agent's current opinion
+                
+                if is_extreme:
+                    # Extreme post: pull agent toward poster's extreme position
+                    if post_opinion < 0.5:
+                        # Pull toward poster's opinion
+                        self.X[i, 0] = max(0, current_opinion - influence_strength * abs(current_opinion - post_opinion))
+                    else:
+                        # Pull toward poster's opinion
+                        self.X[i, 0] = min(1, current_opinion + influence_strength * abs(post_opinion - current_opinion))
+                else:
+                    # Neutral post: pull agent toward center (0.5)
+                    if current_opinion < 0.5:
+                        self.X[i, 0] = min(0.5, current_opinion + influence_strength * 0.5)
+                    else:
+                        self.X[i, 0] = max(0.5, current_opinion - influence_strength * 0.5)
         
         # Restore user agent opinion (users maintain their own opinions)
         if self.n_user_agents > 0:

@@ -25,8 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
         avatarData: [],
         linkElements: null,
         nodeElements: null,
-        currentInfluences: [],
-        networkWidth: 0,
         currentEdgeWeights: []
     };
 
@@ -383,193 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return { svg, linkGroup, nodeGroup, width, height };
     }
 
-    function applyPolarizationForce(extremeness) {
-        if (state.simulation && extremeness > 0.4) {
-            console.log(`Applying EXTREME polarization force (extremeness: ${extremeness.toFixed(3)})`);
-            // Extreme polarization - push to far edges
-            state.simulation.force('opinion_cluster').strength(4.0);
-            state.simulation.force('charge').strength(-500);
-            state.simulation.alpha(2.0).restart();
-            
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('opinion_cluster').strength(3.0);
-                    state.simulation.force('charge').strength(-400);
-                    state.simulation.alpha(1.5).restart();
-                }
-            }, 15000);
-        } else if (state.simulation && extremeness >= 0.2) {
-            console.log(`Applying STRONG polarization force (extremeness: ${extremeness.toFixed(3)})`);
-            // Strong polarization
-            state.simulation.force('opinion_cluster').strength(3.5);
-            state.simulation.force('charge').strength(-450);
-            state.simulation.alpha(1.8).restart();
-            
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('opinion_cluster').strength(2.8);
-                    state.simulation.force('charge').strength(-350);
-                    state.simulation.alpha(1.2).restart();
-                }
-            }, 10000);
-        } else if (state.simulation) {
-            console.log(`Applying MODERATE clustering force (extremeness: ${extremeness.toFixed(3)})`);
-            // Moderate clustering - still very strong
-            state.simulation.force('opinion_cluster').strength(3.0);
-            state.simulation.force('charge').strength(-400);
-            state.simulation.alpha(1.5).restart();
-            
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('opinion_cluster').strength(2.5);
-                    state.simulation.force('charge').strength(-300);
-                    state.simulation.alpha(1.0).restart();
-                }
-            }, 8000);
-        }
-    }
-
-    function calculateInfluenceForces(posterIndex, messageOpinion, posterOpinion, adjMatrix, currentOpinions) {
-        const influences = [];
-        
-        // Find connected agents
-        const connectedIndices = [];
-        for (let i = 0; i < adjMatrix[posterIndex].length; i++) {
-            if (adjMatrix[posterIndex][i] === 1) {
-                connectedIndices.push(i);
-            }
-        }
-        
-        if (connectedIndices.length === 0) {
-            console.log(`No connected agents for poster ${posterIndex}`);
-            return influences;
-        }
-        
-        // Calculate opinion differential
-        const differential = messageOpinion - posterOpinion;
-        const influenceAnalysis = analyzeOpinionInfluence(posterOpinion, messageOpinion);
-        
-        console.log(`Influence calculation - Poster: ${posterIndex}, Opinion: ${posterOpinion.toFixed(3)}, Message: ${messageOpinion.toFixed(3)}, Differential: ${differential.toFixed(3)}, Type: ${influenceAnalysis.type}, Connected: ${connectedIndices.length}`);
-        
-        // Create influence for each connected agent
-        connectedIndices.forEach(agentIndex => {
-            influences.push({
-                targetIndex: agentIndex,
-                sourceIndex: posterIndex,
-                differential: differential,
-                influenceType: influenceAnalysis.type,
-                magnitude: influenceAnalysis.magnitude,
-                direction: influenceAnalysis.direction
-            });
-        });
-        
-        return influences;
-    }
-
-    function analyzeOpinionInfluence(posterOpinion, messageOpinion) {
-        const differential = messageOpinion - posterOpinion;
-        const magnitude = Math.abs(differential);
-        
-        // Determine if influence is moderating or polarizing
-        const posterDistanceFromCenter = Math.abs(posterOpinion - 0.5);
-        const messageDistanceFromCenter = Math.abs(messageOpinion - 0.5);
-        
-        const type = messageDistanceFromCenter < posterDistanceFromCenter ? 'moderating' : 'polarizing';
-        const direction = differential > 0 ? 'positive' : 'negative';
-        
-        return {
-            type: type,
-            direction: direction,
-            magnitude: magnitude
-        };
-    }
-
-    function createInfluenceForce(posterIndex, connectedAgents, opinionDifferential, currentOpinions, networkWidth) {
-        // Store current influences in state for the D3 force to access
-        state.currentInfluences = connectedAgents;
-        state.networkWidth = networkWidth;
-        
-        // Return a target function for d3.forceX
-        return function(d) {
-            // Check if this node is being influenced
-            const influence = state.currentInfluences.find(inf => inf.targetIndex === d.id);
-            if (!influence) {
-                // Use normal opinion clustering for non-influenced agents
-                return networkWidth * 0.05 + (networkWidth * 0.9 * d.opinion);
-            }
-            
-            // Calculate more extreme target position based on influence
-            if (influence.influenceType === 'moderating') {
-                // Pull toward center but not too strongly
-                return networkWidth * 0.4 + (networkWidth * 0.2 * d.opinion);
-            } else {
-                // Push toward extreme ends based on influence direction
-                if (influence.direction === 'positive') {
-                    return networkWidth * 0.85; // Far right (high opinion)
-                } else {
-                    return networkWidth * 0.15; // Far left (low opinion)
-                }
-            }
-        };
-    }
-
-    function clearInfluenceForces() {
-        if (state.simulation) {
-            state.simulation.force('influence').strength(0);
-            state.currentInfluences = [];
-            console.log('Cleared influence forces');
-        }
-    }
-
-    function scheduleForceDecay(duration = 10000) {
-        if (!state.simulation) return;
-        
-        // Apply very strong initial influence force
-        const influenceForce = state.simulation.force('influence');
-        if (influenceForce) {
-            influenceForce.strength(3.0); // Much stronger influence
-            state.simulation.alpha(1.5).restart(); // Very aggressive restart
-            
-            console.log(`Applied STRONG influence force, scheduling decay over ${duration}ms`);
-            
-            // Gradually reduce force strength but keep it strong
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('influence').strength(2.0);
-                    state.simulation.alpha(1.0).restart();
-                }
-            }, duration * 0.2);
-            
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('influence').strength(1.0);
-                    state.simulation.alpha(0.8).restart();
-                }
-            }, duration * 0.5);
-            
-            setTimeout(() => {
-                if (state.simulation) {
-                    state.simulation.force('influence').strength(0.3);
-                    state.simulation.alpha(0.5).restart();
-                }
-            }, duration * 0.8);
-            
-            setTimeout(() => {
-                clearInfluenceForces();
-            }, duration);
-        }
-    }
-
-    function createChartTrace(opinions, agentNames) {
-        // Legacy function - replaced by createD3Nodes
-        return createD3Nodes(opinions, agentNames);
-    }
-
-    function createEdgeTrace(opinions, adjMatrix) {
-        // Legacy function - replaced by createD3Links  
-        return createD3Links(adjMatrix);
-    }
-
     function initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights) {
         if (!elements.connectionChart || !opinions || opinions.length === 0 || !adjMatrix || adjMatrix.length === 0) {
             if(elements.connectionChart) elements.connectionChart.innerHTML = "<p>Waiting for connection data...</p>";
@@ -764,35 +575,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (state.currentOpinions[sender_index]) {
                 posterOpinion = state.currentOpinions[sender_index][0];
             }
-            
-            // Calculate and apply connection-based forces
-            const influences = calculateInfluenceForces(
-                sender_index, 
-                messageOpinion, 
-                posterOpinion, 
-                state.currentAdjacencyMatrix, 
-                state.currentOpinions
-            );
-            
-            if (influences.length > 0 && state.simulation) {
-                const container = d3.select('#connection-chart');
-                const width = container.node().getBoundingClientRect().width;
-                
-                // Create and apply influence force target function
-                const influenceTargetFunc = createInfluenceForce(
-                    sender_index, 
-                    influences, 
-                    messageOpinion - posterOpinion, 
-                    state.currentOpinions, 
-                    width
-                );
-                
-                // Update the existing influence force with new target function
-                state.simulation.force('influence').x(influenceTargetFunc);
-                scheduleForceDecay(10000);
-                
-                console.log(`Applied connection-based forces for ${sender_name}: ${influences.length} influenced agents`);
-            }
         }
     }
 
@@ -817,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (response.ok) {
                     const result = await response.json();
                     
-                    // Use analyzed opinion from backend for connection-based forces
+                    // Use analyzed opinion from backend for logging
                     let analyzedOpinion = 0.5;
                     if (result.analyzed_opinion && result.analyzed_opinion.length > 0) {
                         analyzedOpinion = result.analyzed_opinion[0];
@@ -827,36 +609,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     let userOpinion = 0.5;
                     if (state.currentOpinions[state.userAgentIndex]) {
                         userOpinion = state.currentOpinions[state.userAgentIndex][0];
-                    }
-                    
-                    // Calculate and apply connection-based forces using analyzed opinion
-                    if (state.currentAdjacencyMatrix && state.currentOpinions) {
-                        const influences = calculateInfluenceForces(
-                            state.userAgentIndex,
-                            analyzedOpinion,
-                            userOpinion,
-                            state.currentAdjacencyMatrix,
-                            state.currentOpinions
-                        );
-                        
-                        if (influences.length > 0 && state.simulation) {
-                            const container = d3.select('#connection-chart');
-                            const width = container.node().getBoundingClientRect().width;
-                            
-                            const influenceTargetFunc = createInfluenceForce(
-                                state.userAgentIndex,
-                                influences,
-                                analyzedOpinion - userOpinion,
-                                state.currentOpinions,
-                                width
-                            );
-                            
-                            // Update the existing influence force with new target function
-                            state.simulation.force('influence').x(influenceTargetFunc);
-                            scheduleForceDecay(10000);
-                            
-                            console.log(`User message analysis - Opinion: ${userOpinion.toFixed(3)}, Analyzed: ${analyzedOpinion.toFixed(3)}, Influences: ${influences.length} agents`);
-                        }
                     }
                 } else {
                     const errorData = await response.json().catch(() => ({detail: "Send failed"}));
@@ -898,4 +650,4 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchInitialState();
     connectWebSocket();
     checkSimulationStatus();
-}); 
+});

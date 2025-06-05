@@ -26,15 +26,15 @@ SIM_PARAMS = {
     "seed": 40,
     "n_agents": 20,
     "n_opinions": 1,
-    "theta": 5.0,
+    "theta": 1.0,
     "min_prob": 0.03,
-    "alpha_filter": 1.0,
+    "alpha_filter": 0.3,
     "user_agents_initial_opinion": [[0.5]],
     "user_alpha": 0.5,
     "strategic_agents_initial_opinion_targets": [[0.5]],
     "strategic_theta": -1.5,
-    "time_between_posts": 8.0,
-    "updates_per_cycle": 5,
+    "time_between_posts": 4.0,
+    "updates_per_cycle": 1,
     "posts_per_cycle": 3,
     "init_updates": 0,
     "include_strategic_agents": True,
@@ -134,7 +134,7 @@ def initialize_network_and_poster():
     np.random.seed(SIM_PARAMS["seed"])
     random.seed(SIM_PARAMS["seed"])
 
-    init_opinion_one = beta.rvs(a=2, b=2, size=SIM_PARAMS["n_agents"], random_state=SIM_PARAMS["seed"])
+    init_opinion_one = beta.rvs(a=1.5, b=1.5, size=SIM_PARAMS["n_agents"], random_state=SIM_PARAMS["seed"])
     np.random.shuffle(init_opinion_one) 
     init_X = init_opinion_one.reshape(-1, 1)
     
@@ -145,14 +145,15 @@ def initialize_network_and_poster():
         n_agents=SIM_PARAMS["n_agents"],
         n_opinions=SIM_PARAMS["n_opinions"],
         X=init_X.copy(),
-        theta=SIM_PARAMS["theta"],
         min_prob=SIM_PARAMS["min_prob"],
         alpha_filter=SIM_PARAMS["alpha_filter"],
         user_agents=SIM_PARAMS["user_agents_initial_opinion"] if SIM_PARAMS["n_agents"] > 0 else [],
         user_alpha=SIM_PARAMS["user_alpha"],
         strategic_agents=SIM_PARAMS.get("strategic_agents_initial_opinion_targets", []),
         strategic_theta=SIM_PARAMS["strategic_theta"],
-        max_connection_distance=0.4  # Allow connections within this opinion distance
+        max_connection_distance=0.2,  # Reduced from 0.4 since we're adding randomness
+        similarity_ratio=0.8,  # 80% similarity-based connections
+        random_ratio=0.2  # 20% random connections
     )
     poster_instance = Poster(API_KEY, OPINION_AXES, dummy_mode=USE_DUMMY_POSTER)
     
@@ -291,12 +292,20 @@ async def send_user_message(user_message: UserMessage):
         network_instance.apply_user_post_influence(
             user_index=user_agent_index,
             analyzed_opinion=user_opinion_vector,
-            influence_strength=0.1,
-            second_degree_decay=0.3
+            influence_strength=0.1
         )
+        # Update network and broadcast state immediately after user post
+        network_instance.update_network(include_user_opinions=True)
+        X_updated, A_updated, _, edge_weights_updated = network_instance.get_state()
+        current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
+        await manager.broadcast_json({
+            "type": "opinion_update",
+            "data": X_updated.tolist(),
+            "adjacency_matrix": A_updated.tolist(),
+            "edge_weights": edge_weights_updated.tolist(),
+            "color_scaling_params": current_color_params
+        })
 
-    network_instance.get_state()
-    
     user_posted_this_cycle_flag = True
     return {"status": "message_processed", "analyzed_opinion": user_opinion_vector}
 
@@ -452,6 +461,32 @@ async def simulation_loop_task():
                         
                         post_content = await asyncio.to_thread(poster_instance.generate_post, agent_name, agent_opinion, is_agent=is_strategic_agent)
                         
+                        # Apply post influence to network (same as user posts)
+                        try:
+                            analyzed_opinion = await asyncio.to_thread(poster_instance.analyze_post, post_content)
+                            if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
+                                network_instance.apply_user_post_influence(
+                                    user_index=agent_idx,
+                                    analyzed_opinion=analyzed_opinion,
+                                    influence_strength=0.1
+                                )
+                                # Run network update immediately after each post influence
+                                network_instance.update_network(include_user_opinions=False)
+
+                                # Broadcast state immediately after each post's network update
+                                X_updated, A_updated, _, edge_weights_updated = network_instance.get_state()
+                                current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
+                                await manager.broadcast_json({
+                                    "type": "opinion_update",
+                                    "data": X_updated.tolist(),
+                                    "adjacency_matrix": A_updated.tolist(),
+                                    "edge_weights": edge_weights_updated.tolist(),
+                                    "color_scaling_params": current_color_params
+                                })
+                        except Exception:
+                            # If analysis fails, skip influence but still broadcast post
+                            pass
+                        
                         await manager.broadcast_json({
                             "type": "new_post",
                             "data": {
@@ -468,11 +503,9 @@ async def simulation_loop_task():
                             "data": {"message": f"System: Error with {agent_name}'s post."}
                         })
 
-            if network_instance and simulation_running:
-                for i in range(SIM_PARAMS.get("updates_per_cycle", 1)):
-                    if not network_instance or not simulation_running: break 
-                    network_instance.update_network(include_user_opinions=user_acted_this_cycle if i == 0 else False)
-
+            # Network updates now happen after each individual post, and the user post
+            # handler also triggers an update. The final broadcast at the end of the
+            # cycle ensures the frontend is synced.
             if network_instance and simulation_running:
                 X_updated, A_updated, _, edge_weights_updated = network_instance.get_state()
                 current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
