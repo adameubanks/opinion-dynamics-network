@@ -58,7 +58,7 @@ class Poster:
                 continue
         raise Exception(f"Failed to get valid opinion vector after {max_retries} attempts for post: '{post[:50]}...'")
 
-    def generate_post(self, name, opinion_vector, max_retries=5, is_agent=False):
+    def generate_post(self, name, opinion_vector, max_retries=5):
         topic_idx = random.choice(range(len(self.opinion_axes)))
         axis = self.opinion_axes[topic_idx]
         opinion_on_topic = opinion_vector[topic_idx]
@@ -81,12 +81,10 @@ class Poster:
             raise ValueError("All opinion values must be between 0 and 1")
         
         base_prompt = "You are a Facebook user in a Facebook group with your friends."
-        if is_agent:
-            base_prompt = "You are a sneaky russian spy pretending to be a Facebook user in a Facebook group with your friends. You want the other people in the group to be convinced of your opinion, but you still want them to like you and continue being your friend."
         
         system_prompt = f"{base_prompt} Generate a SINGLE, NATURAL social media post (max 100 chars) that expresses your view on a topic.\n\n"
         system_prompt += "CRITICAL RULES:\n"
-        system_prompt += "1. MUST be under 100 characters including spaces and hashtags. Keep it short.\n"
+        system_prompt += "1. MUST be under 100 characters including spaces. Keep it short.\n"
         system_prompt += "2. Express your view in a single, natural statement - DO NOT number or separate points\n"
         system_prompt += "3. Use stronger language for values near 0 or 1, moderate for values near 0.5\n"
         system_prompt += "4. Sound like a real social media user\n"

@@ -23,21 +23,20 @@ USE_DUMMY_POSTER = os.getenv("USE_DUMMY_POSTER", "False").lower() == "true"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 SIM_PARAMS = {
-    "seed": 40,
     "n_agents": 20,
     "n_opinions": 1,
     "theta": 1.0,
-    "min_prob": 0.03,
-    "alpha_filter": 0.3,
+    "min_prob": 0.05,
+    "alpha_filter": 0.1,
     "user_agents_initial_opinion": [[0.5]],
     "user_alpha": 0.5,
     "strategic_agents_initial_opinion_targets": [[0.5]],
-    "strategic_theta": -1.5,
+    "strategic_theta": 0.5,
     "time_between_posts": 4.0,
     "updates_per_cycle": 1,
     "posts_per_cycle": 3,
-    "init_updates": 0,
-    "include_strategic_agents": True,
+    "init_updates": 50,
+    "include_strategic_agents": False,
     "loop_sleep_time": 5.0
 }
 
@@ -49,19 +48,20 @@ OPINION_AXES = [
     }
 ]
 
-BOT_NAMES_BASE = np.array([
-    "User", "Amara", "Kwame", "Hiroshi", "Priya", "Diego", "Carmen", "Fatima", "Omar", "Liam",
-    "Zara", "Wei", "Sofia", "Yasmin", "Aiyana", "Koda", "Elena", "Finn"
-])
-BOT_NAMES_STRATEGIC_DEFAULT = ["Vladi-meow", "Pineapple Dmit-za"]
-BOT_NAMES_NON_STRATEGIC_REPLACEMENTS = ["Jordan", "River"]
+BOT_NAMES = [
+    "User",
+    "Marshall", "Brigham", "Nephi", "Khalid", "Amari", "Joon-ho", "Rohan", "Mateo", "Diego", "Hector",
+    "Lily", "Eliza", "Agnes", "Aaliyah", "Yasmine", "Yuki", "Leilani", "Carmen", "Mei", "Priya"
+]
 
-network_instance: Network | None = None
-poster_instance: Poster | None = None
-simulation_task: asyncio.Task | None = None
-current_bot_names = BOT_NAMES_BASE[:SIM_PARAMS["n_agents"]].copy()
-user_posted_this_cycle_flag = False
-simulation_running = False
+SIM_STATE = {
+    "network_instance": None,
+    "poster_instance": None,
+    "simulation_task": None,
+    "current_bot_names": np.array(BOT_NAMES[:SIM_PARAMS["n_agents"]]),
+    "user_posted_this_cycle_flag": False,
+    "simulation_running": False
+}
 
 class ConnectionManager:
     def __init__(self):
@@ -76,36 +76,15 @@ class ConnectionManager:
             self.active_connections.remove(websocket)
 
     async def broadcast_json(self, data: dict):
-        disconnected_sockets = []
         for connection in self.active_connections:
-            try:
-                await connection.send_json(data)
-            except Exception:
-                disconnected_sockets.append(connection)
-        for ws in disconnected_sockets:
-            self.disconnect(ws)
+            await connection.send_json(data)
 
 manager = ConnectionManager()
 
-def setup_simulation_parameters(include_strategic: bool):
-    global SIM_PARAMS, current_bot_names 
+def setup_simulation_parameters():
+    num_total_agents = SIM_PARAMS["n_agents"]
     
-    SIM_PARAMS["include_strategic_agents"] = include_strategic
-    num_total_agents = SIM_PARAMS["n_agents"] 
-
-    if include_strategic:
-        SIM_PARAMS["strategic_agents_initial_opinion_targets"] = [[0.0], [1.0]]
-        num_strategic_agents = len(SIM_PARAMS["strategic_agents_initial_opinion_targets"])
-        num_base_names_needed = num_total_agents - num_strategic_agents
-        active_bot_names = list(BOT_NAMES_BASE[:num_base_names_needed]) + BOT_NAMES_STRATEGIC_DEFAULT[:num_strategic_agents]
-    else:
-        SIM_PARAMS["strategic_agents_initial_opinion_targets"] = []
-        num_non_strategic_replacements = len(BOT_NAMES_NON_STRATEGIC_REPLACEMENTS)
-        if num_total_agents >= num_non_strategic_replacements:
-            num_base_names_needed = num_total_agents - num_non_strategic_replacements
-            active_bot_names = list(BOT_NAMES_BASE[:num_base_names_needed]) + BOT_NAMES_NON_STRATEGIC_REPLACEMENTS
-        else:
-            active_bot_names = list(BOT_NAMES_BASE[:num_total_agents])
+    active_bot_names = BOT_NAMES[:num_total_agents]
 
     final_bot_names = [""] * num_total_agents
     if num_total_agents > 0:
@@ -123,25 +102,20 @@ def setup_simulation_parameters(include_strategic: bool):
         for i in range(fill_idx, num_total_agents):
             final_bot_names[i] = f"Agent {i}"
     
-    current_bot_names = np.array(final_bot_names)
+    SIM_STATE["current_bot_names"] = np.array(final_bot_names)
     SIM_PARAMS["user_agents_initial_opinion"] = [[0.5]]
 
 def initialize_network_and_poster():
-    global network_instance, poster_instance, SIM_PARAMS, OPINION_AXES, current_bot_names, USE_DUMMY_POSTER
+    setup_simulation_parameters()
 
-    setup_simulation_parameters(SIM_PARAMS.get("include_strategic_agents", True))
-
-    np.random.seed(SIM_PARAMS["seed"])
-    random.seed(SIM_PARAMS["seed"])
-
-    init_opinion_one = beta.rvs(a=1.5, b=1.5, size=SIM_PARAMS["n_agents"], random_state=SIM_PARAMS["seed"])
+    init_opinion_one = beta.rvs(a=1.5, b=1.5, size=SIM_PARAMS["n_agents"])
     np.random.shuffle(init_opinion_one) 
     init_X = init_opinion_one.reshape(-1, 1)
     
     if SIM_PARAMS["user_agents_initial_opinion"] and SIM_PARAMS["n_agents"] > 0 and init_X.shape[0] > 0:
         init_X[0] = SIM_PARAMS["user_agents_initial_opinion"][0]
 
-    network_instance = Network(
+    SIM_STATE["network_instance"] = Network(
         n_agents=SIM_PARAMS["n_agents"],
         n_opinions=SIM_PARAMS["n_opinions"],
         X=init_X.copy(),
@@ -151,37 +125,34 @@ def initialize_network_and_poster():
         user_alpha=SIM_PARAMS["user_alpha"],
         strategic_agents=SIM_PARAMS.get("strategic_agents_initial_opinion_targets", []),
         strategic_theta=SIM_PARAMS["strategic_theta"],
-        max_connection_distance=0.2,  # Reduced from 0.4 since we're adding randomness
-        similarity_ratio=0.8,  # 80% similarity-based connections
-        random_ratio=0.2  # 20% random connections
+        max_connection_distance=0.2,
+        similarity_ratio=0.8,
+        random_ratio=0.2
     )
-    poster_instance = Poster(API_KEY, OPINION_AXES, dummy_mode=USE_DUMMY_POSTER)
+    SIM_STATE["poster_instance"] = Poster(API_KEY, OPINION_AXES, dummy_mode=USE_DUMMY_POSTER)
     
-    if network_instance: 
+    if SIM_STATE["network_instance"]: 
         for _ in range(SIM_PARAMS["init_updates"]):
-            network_instance.update_network(include_user_opinions=False)
+            SIM_STATE["network_instance"].update_network(include_user_opinions=False)
 
 @asynccontextmanager
 async def lifespan(app_instance: FastAPI):
-    global simulation_task, network_instance, poster_instance
     initialize_network_and_poster()
-    
     yield
-    
-    if simulation_task is not None and not simulation_task.done():
-        simulation_task.cancel()
+    if SIM_STATE["simulation_task"] is not None and not SIM_STATE["simulation_task"].done():
+        SIM_STATE["simulation_task"].cancel()
         try:
-            await simulation_task
+            await SIM_STATE["simulation_task"]
         except asyncio.CancelledError:
             pass
 
 app = FastAPI(lifespan=lifespan)
 
 def _calculate_color_scaling_params(X_opinions: np.ndarray, sim_config: dict) -> Dict[str, float]:
-    num_strategic = len(sim_config.get("strategic_agents_initial_opinion_targets", [])) if sim_config.get("include_strategic_agents") else 0
     n_agents = sim_config.get("n_agents", 0)
 
-    normal_agent_indices = list(range(1, n_agents - num_strategic))
+    # All agents except User (index 0) are considered for scaling
+    normal_agent_indices = list(range(1, n_agents))
 
     x_min, x_max = 0.0, 1.0
 
@@ -211,10 +182,6 @@ def _create_simulation_state_payload(current_network_instance: Network,
     X, A, _, edge_weights = current_network_instance.get_state()
     color_params = _calculate_color_scaling_params(X, sim_params_config)
     
-    num_strategic_agents = 0
-    if sim_params_config.get("include_strategic_agents", False):
-        num_strategic_agents = len(sim_params_config.get("strategic_agents_initial_opinion_targets", []))
-
     return {
         "opinions": X.tolist() if X is not None else [],
         "adjacency_matrix": A.tolist() if A is not None else [],
@@ -223,8 +190,8 @@ def _create_simulation_state_payload(current_network_instance: Network,
         "opinion_axes": opinion_axes_list,
         "n_agents": sim_params_config.get("n_agents", 0),
         "user_agent_index": 0,
-        "strategic_agent_count": num_strategic_agents,
-        "include_strategic_agents": sim_params_config.get("include_strategic_agents", True),
+        "strategic_agent_count": 0,
+        "include_strategic_agents": False,
         "color_scaling_params": color_params
     }
 
@@ -233,24 +200,22 @@ class UserMessage(BaseModel):
 
 class ResetConfig(BaseModel):
     include_strategic_agents: bool | None = None
-    seed: int | None = None
 
 class SimulationControl(BaseModel):
     action: str
 
 @app.get("/api/initial_state")
 async def get_initial_state_api():
-    global network_instance, SIM_PARAMS, current_bot_names, OPINION_AXES
-    if network_instance is None:
+    if SIM_STATE["network_instance"] is None:
         initialize_network_and_poster()
-        if network_instance is None:
+        if SIM_STATE["network_instance"] is None:
             raise HTTPException(status_code=500, detail="Simulation not initialized properly.")
     
     try:
         payload = _create_simulation_state_payload(
-            network_instance, 
+            SIM_STATE["network_instance"], 
             SIM_PARAMS, 
-            current_bot_names.tolist() if isinstance(current_bot_names, np.ndarray) else list(current_bot_names), 
+            SIM_STATE["current_bot_names"].tolist() if isinstance(SIM_STATE["current_bot_names"], np.ndarray) else list(SIM_STATE["current_bot_names"]), 
             OPINION_AXES
         )
         return payload
@@ -259,8 +224,7 @@ async def get_initial_state_api():
 
 @app.post("/api/send_message")
 async def send_user_message(user_message: UserMessage):
-    global user_posted_this_cycle_flag
-    if network_instance is None or poster_instance is None:
+    if SIM_STATE["network_instance"] is None or SIM_STATE["poster_instance"] is None:
         raise HTTPException(status_code=500, detail="Simulation not initialized")
 
     message_text = user_message.message.strip()
@@ -270,7 +234,7 @@ async def send_user_message(user_message: UserMessage):
     user_agent_index = 0
 
     try:
-        user_opinion_vector = await asyncio.to_thread(poster_instance.analyze_post, message_text)
+        user_opinion_vector = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, message_text)
     except Exception as e:
         user_opinion_vector = SIM_PARAMS["user_agents_initial_opinion"][0] 
         await manager.broadcast_json({
@@ -279,24 +243,22 @@ async def send_user_message(user_message: UserMessage):
         })
 
     if isinstance(user_opinion_vector, list) and len(user_opinion_vector) == SIM_PARAMS["n_opinions"]:
-        network_instance.add_user_opinion(np.array(user_opinion_vector), user_index=user_agent_index)
+        SIM_STATE["network_instance"].add_user_opinion(np.array(user_opinion_vector), user_index=user_agent_index)
     else:
-        current_X_state, _, _ = network_instance.get_state()
+        current_X_state, _, _ = SIM_STATE["network_instance"].get_state()
         if current_X_state.shape[0] > user_agent_index:
-             network_instance.add_user_opinion(np.array(current_X_state[user_agent_index]), user_index=user_agent_index)
+             SIM_STATE["network_instance"].add_user_opinion(np.array(current_X_state[user_agent_index]), user_index=user_agent_index)
         else:
-             network_instance.add_user_opinion(np.array(SIM_PARAMS["user_agents_initial_opinion"][0]), user_index=user_agent_index)
+             SIM_STATE["network_instance"].add_user_opinion(np.array(SIM_PARAMS["user_agents_initial_opinion"][0]), user_index=user_agent_index)
 
-    # Apply user post influence after network update
-    if network_instance and user_opinion_vector:
-        network_instance.apply_user_post_influence(
+    if SIM_STATE["network_instance"] and user_opinion_vector:
+        SIM_STATE["network_instance"].apply_user_post_influence(
             user_index=user_agent_index,
             analyzed_opinion=user_opinion_vector,
             influence_strength=0.1
         )
-        # Update network and broadcast state immediately after user post
-        network_instance.update_network(include_user_opinions=True)
-        X_updated, A_updated, _, edge_weights_updated = network_instance.get_state()
+        SIM_STATE["network_instance"].update_network(include_user_opinions=True)
+        X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
         current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
         await manager.broadcast_json({
             "type": "opinion_update",
@@ -306,38 +268,22 @@ async def send_user_message(user_message: UserMessage):
             "color_scaling_params": current_color_params
         })
 
-    user_posted_this_cycle_flag = True
+    SIM_STATE["user_posted_this_cycle_flag"] = True
     return {"status": "message_processed", "analyzed_opinion": user_opinion_vector}
 
 @app.post("/api/reset_simulation")
 async def reset_simulation_api(config: ResetConfig):
-    global simulation_task, network_instance, poster_instance, SIM_PARAMS, current_bot_names, OPINION_AXES, user_posted_this_cycle_flag, simulation_running
+    if SIM_STATE["simulation_running"]:
+        await control_simulation(SimulationControl(action="stop"))
     
-    if simulation_task and not simulation_task.done():
-        simulation_task.cancel()
-        try:
-            await simulation_task
-        except asyncio.CancelledError:
-            pass
-        finally:
-            simulation_task = None 
+    initialize_network_and_poster()
 
-    simulation_running = False
-
-    if config.include_strategic_agents is not None:
-        SIM_PARAMS["include_strategic_agents"] = config.include_strategic_agents
-    if config.seed is not None: 
-        SIM_PARAMS["seed"] = config.seed
-
-    initialize_network_and_poster() 
-    user_posted_this_cycle_flag = False
-
-    if network_instance and poster_instance:
+    if SIM_STATE["network_instance"] and SIM_STATE["poster_instance"]:
         try:
             full_state_payload = _create_simulation_state_payload(
-                network_instance, 
+                SIM_STATE["network_instance"], 
                 SIM_PARAMS, 
-                current_bot_names.tolist() if isinstance(current_bot_names, np.ndarray) else list(current_bot_names), 
+                SIM_STATE["current_bot_names"].tolist() if isinstance(SIM_STATE["current_bot_names"], np.ndarray) else list(SIM_STATE["current_bot_names"]), 
                 OPINION_AXES
             )
             await manager.broadcast_json({
@@ -352,28 +298,26 @@ async def reset_simulation_api(config: ResetConfig):
 
 @app.post("/api/control_simulation")
 async def control_simulation(control: SimulationControl):
-    global simulation_task, simulation_running, network_instance, poster_instance
-    
     if control.action == "start":
-        if not simulation_running and network_instance and poster_instance:
-            simulation_running = True
-            if simulation_task is None or simulation_task.done():
-                simulation_task = asyncio.create_task(simulation_loop_task())
+        if not SIM_STATE["simulation_running"] and SIM_STATE["network_instance"] and SIM_STATE["poster_instance"]:
+            SIM_STATE["simulation_running"] = True
+            if SIM_STATE["simulation_task"] is None or SIM_STATE["simulation_task"].done():
+                SIM_STATE["simulation_task"] = asyncio.create_task(simulation_loop_task())
             return {"status": "started", "message": "Simulation started"}
         else:
             return {"status": "already_running", "message": "Simulation is already running"}
     
     elif control.action == "stop":
-        if simulation_running:
-            simulation_running = False
-            if simulation_task and not simulation_task.done():
-                simulation_task.cancel()
+        if SIM_STATE["simulation_running"]:
+            SIM_STATE["simulation_running"] = False
+            if SIM_STATE["simulation_task"] and not SIM_STATE["simulation_task"].done():
+                SIM_STATE["simulation_task"].cancel()
                 try:
-                    await simulation_task
+                    await SIM_STATE["simulation_task"]
                 except asyncio.CancelledError:
                     pass
                 finally:
-                    simulation_task = None
+                    SIM_STATE["simulation_task"] = None
             return {"status": "stopped", "message": "Simulation stopped"}
         else:
             return {"status": "already_stopped", "message": "Simulation is already stopped"}
@@ -383,8 +327,7 @@ async def control_simulation(control: SimulationControl):
 
 @app.get("/api/simulation_status")
 async def get_simulation_status():
-    global simulation_running
-    return {"running": simulation_running}
+    return {"running": SIM_STATE["simulation_running"]}
 
 @app.websocket("/ws/simulation_updates")
 async def websocket_endpoint(websocket: WebSocket):
@@ -400,21 +343,19 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 async def simulation_loop_task():
-    global network_instance, poster_instance, SIM_PARAMS, current_bot_names, manager, user_posted_this_cycle_flag, simulation_running
-    
-    if not network_instance or not poster_instance:
+    if not SIM_STATE["network_instance"] or not SIM_STATE["poster_instance"]:
         return
 
-    while simulation_running: 
+    while SIM_STATE["simulation_running"]: 
         try:
-            user_acted_this_cycle = user_posted_this_cycle_flag
+            user_acted_this_cycle = SIM_STATE["user_posted_this_cycle_flag"]
             if user_acted_this_cycle:
-                 user_posted_this_cycle_flag = False
+                 SIM_STATE["user_posted_this_cycle_flag"] = False
 
             last_post_time_cycle = time.time()
 
-            if poster_instance and network_instance:
-                X_state, _, _, _ = network_instance.get_state() 
+            if SIM_STATE["poster_instance"] and SIM_STATE["network_instance"]:
+                X_state, _, _, _ = SIM_STATE["network_instance"].get_state() 
                 
                 num_bots_to_post = SIM_PARAMS.get("posts_per_cycle", 1)
                 agent_indices_all = list(range(SIM_PARAMS["n_agents"]))
@@ -444,37 +385,28 @@ async def simulation_loop_task():
                 random.shuffle(posting_bots_indices)
 
                 for agent_idx in posting_bots_indices:
-                    if not network_instance or not simulation_running: break 
+                    if not SIM_STATE["network_instance"] or not SIM_STATE["simulation_running"]: break 
                     agent_opinion = X_state[agent_idx]
-                    agent_name = current_bot_names[agent_idx] if agent_idx < len(current_bot_names) else f"Agent {agent_idx}"
-                    
-                    is_strategic_agent = False
-                    if SIM_PARAMS.get("include_strategic_agents"):
-                        num_strat_conf = len(SIM_PARAMS.get("strategic_agents_initial_opinion_targets",[]))
-                        if agent_idx >= (SIM_PARAMS["n_agents"] - num_strat_conf):
-                            is_strategic_agent = True
+                    agent_name = SIM_STATE["current_bot_names"][agent_idx] if agent_idx < len(SIM_STATE["current_bot_names"]) else f"Agent {agent_idx}"
                     
                     try:
                         post_delay = SIM_PARAMS.get("time_between_posts", 0.1)
                         if time.time() - last_post_time_cycle < post_delay:
                              await asyncio.sleep(max(0, post_delay - (time.time() - last_post_time_cycle)))
                         
-                        post_content = await asyncio.to_thread(poster_instance.generate_post, agent_name, agent_opinion, is_agent=is_strategic_agent)
+                        post_content = await asyncio.to_thread(SIM_STATE["poster_instance"].generate_post, agent_name, agent_opinion)
                         
-                        # Apply post influence to network (same as user posts)
                         try:
-                            analyzed_opinion = await asyncio.to_thread(poster_instance.analyze_post, post_content)
+                            analyzed_opinion = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, post_content)
                             if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
-                                network_instance.apply_user_post_influence(
+                                SIM_STATE["network_instance"].apply_user_post_influence(
                                     user_index=agent_idx,
                                     analyzed_opinion=analyzed_opinion,
                                     influence_strength=0.1
                                 )
-                                # Run network update immediately after each post influence
-                                network_instance.update_network(include_user_opinions=False)
+                                SIM_STATE["network_instance"].update_network(include_user_opinions=False)
 
-                                # Broadcast state immediately after each post's network update
-                                X_updated, A_updated, _, edge_weights_updated = network_instance.get_state()
+                                X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
                                 current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
                                 await manager.broadcast_json({
                                     "type": "opinion_update",
@@ -484,7 +416,6 @@ async def simulation_loop_task():
                                     "color_scaling_params": current_color_params
                                 })
                         except Exception:
-                            # If analysis fails, skip influence but still broadcast post
                             pass
                         
                         await manager.broadcast_json({
@@ -503,11 +434,8 @@ async def simulation_loop_task():
                             "data": {"message": f"System: Error with {agent_name}'s post."}
                         })
 
-            # Network updates now happen after each individual post, and the user post
-            # handler also triggers an update. The final broadcast at the end of the
-            # cycle ensures the frontend is synced.
-            if network_instance and simulation_running:
-                X_updated, A_updated, _, edge_weights_updated = network_instance.get_state()
+            if SIM_STATE["network_instance"] and SIM_STATE["simulation_running"]:
+                X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
                 current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
                 
                 await manager.broadcast_json({
@@ -525,7 +453,7 @@ async def simulation_loop_task():
         except Exception:
             await asyncio.sleep(1) 
 
-    simulation_running = False
+    SIM_STATE["simulation_running"] = False
 
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "frontend" / "static"), name="static")
 

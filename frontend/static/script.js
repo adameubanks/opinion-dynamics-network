@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (message.edge_weights) state.currentEdgeWeights = message.edge_weights;
                 if (state.currentOpinions && state.currentOpinions.length > 0) {
                     if (state.currentAdjacencyMatrix && state.currentAdjacencyMatrix.length > 0) {
-                        updateConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.currentEdgeWeights);
+                        updateD3Network(state.currentOpinions, state.currentAdjacencyMatrix, state.currentEdgeWeights);
                     }
                 }
             } else if (message.type === 'new_post') {
@@ -119,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (message.type === 'initial_state_full' || message.type === 'reset_complete') {
                 initializeSimulationState(message.data);
                 if (state.currentAdjacencyMatrix && state.currentAdjacencyMatrix.length > 0) {
-                    initializeConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
+                    initializeD3Network(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
                 }
             } else if (message.type === 'system_message') {
                 addFeedMessage({ 
@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', () => {
             initializeSimulationState(initialState);
             if (initialState.adjacency_matrix && initialState.adjacency_matrix.length > 0) {
                 state.currentAdjacencyMatrix = initialState.adjacency_matrix;
-                initializeConnectionChart(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
+                initializeD3Network(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
             }
         } catch (error) {
             console.error("Failed to fetch initial state:", error);
@@ -400,13 +400,14 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Initializing network: ${nodes.length} agents, ${links.length} initial connections`);
         console.log(`Initial connections:`, links.map(l => `${l.source}-${l.target} (weight: ${l.weight.toFixed(3)})`));
         
-        // Setup force simulation with extreme polarization - NO CENTER FORCE
+        // Setup force simulation with extreme polarization and centering
         state.simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.distance).strength(d => d.weight * 0.1)) // Weaker links
             .force("charge", d3.forceManyBody().strength(-300))
             .force("collision", d3.forceCollide().radius(15)) // Smaller collision radius
             .force("opinion_cluster", d3.forceX(d => width * 0.05 + (width * 0.9 * d.opinion)).strength(2.5)) // Much stronger
-            .force("influence", d3.forceX().strength(0));
+            .force("influence", d3.forceX().strength(0))
+            .force("y_centering", d3.forceY(height / 2).strength(0.1)); // Gentle vertical centering
 
         // Create link elements
         const linkElements = linkGroup.selectAll('.network-edge')
@@ -437,6 +438,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Update positions on simulation tick
         state.simulation.on("tick", () => {
+            const containerNode = d3.select('#connection-chart').node();
+            if (!containerNode) return;
+            const { width, height } = containerNode.getBoundingClientRect();
+
             linkElements
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
@@ -451,11 +456,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.linkElements = linkElements;
         state.nodeElements = nodeElements;
         state.nodePositions = nodes;
-    }
-
-    function initializeConnectionChart(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights) {
-        // Replace with D3 implementation
-        return initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights);
     }
 
     function updateD3Network(opinions, adjMatrix, edgeWeights) {
@@ -540,11 +540,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function updateConnectionChart(opinions, adjMatrix, edgeWeights) {
-        // Replace with D3 implementation
-        return updateD3Network(opinions, adjMatrix, edgeWeights);
-    }
-
     function addFeedMessage(postData) {
         if (!elements.feedMessages) return;
         const { sender_name, sender_index, message, opinion_vector } = postData;
@@ -561,21 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
         postDiv.style.borderLeft = `4px solid ${borderColor}`;
         elements.feedMessages.appendChild(postDiv);
         elements.feedMessages.scrollTop = elements.feedMessages.scrollHeight;
-        
-        // Apply connection-based influence forces for non-system posts
-        if (sender_index >= 0 && sender_name !== "System" && state.currentAdjacencyMatrix && state.currentOpinions) {
-            // Get message opinion from post data
-            let messageOpinion = 0.5;
-            if (opinion_vector && opinion_vector.length > 0) {
-                messageOpinion = opinion_vector[0];
-            }
-            
-            // Get poster's current opinion
-            let posterOpinion = 0.5;
-            if (state.currentOpinions[sender_index]) {
-                posterOpinion = state.currentOpinions[sender_index][0];
-            }
-        }
     }
 
     async function sendMessage() {
@@ -596,21 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ message: messageText }),
                 });
-                if (response.ok) {
-                    const result = await response.json();
-                    
-                    // Use analyzed opinion from backend for logging
-                    let analyzedOpinion = 0.5;
-                    if (result.analyzed_opinion && result.analyzed_opinion.length > 0) {
-                        analyzedOpinion = result.analyzed_opinion[0];
-                    }
-                    
-                    // Get user's current opinion
-                    let userOpinion = 0.5;
-                    if (state.currentOpinions[state.userAgentIndex]) {
-                        userOpinion = state.currentOpinions[state.userAgentIndex][0];
-                    }
-                } else {
+                if (!response.ok) {
                     const errorData = await response.json().catch(() => ({detail: "Send failed"}));
                     addFeedMessage({ sender_name: "System", sender_index: -1, message: `Error sending: ${errorData.detail}`, opinion_vector: [0.5]});
                 }
