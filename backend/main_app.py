@@ -23,9 +23,8 @@ USE_DUMMY_POSTER = os.getenv("USE_DUMMY_POSTER", "False").lower() == "true"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 SIM_PARAMS = {
-    "n_agents": 20,
+    "n_agents": 21,
     "n_opinions": 1,
-    "theta": 1.0,
     "min_prob": 0.05,
     "alpha_filter": 0.1,
     "user_agents_initial_opinion": [[0.5]],
@@ -33,9 +32,8 @@ SIM_PARAMS = {
     "strategic_agents_initial_opinion_targets": [[0.5]],
     "strategic_theta": 0.5,
     "time_between_posts": 4.0,
-    "updates_per_cycle": 1,
     "posts_per_cycle": 3,
-    "init_updates": 50,
+    "init_updates": 0,
     "include_strategic_agents": False,
     "loop_sleep_time": 5.0
 }
@@ -108,7 +106,7 @@ def setup_simulation_parameters():
 def initialize_network_and_poster():
     setup_simulation_parameters()
 
-    init_opinion_one = beta.rvs(a=1.5, b=1.5, size=SIM_PARAMS["n_agents"])
+    init_opinion_one = beta.rvs(a=2, b=2, size=SIM_PARAMS["n_agents"])
     np.random.shuffle(init_opinion_one) 
     init_X = init_opinion_one.reshape(-1, 1)
     

@@ -70,6 +70,7 @@ body {
     margin-bottom: 10px;
     padding-bottom: 5px;
     border-bottom: 1px solid #3a3a3a;
+    text-align: center;
 }
 
 .scrollable-feed, .scrollable-updates {
@@ -84,27 +85,30 @@ body {
 
 .feed-input-area {
     display: flex;
-    margin-top: auto; /* Pushes to the bottom of flex container */
+    justify-content: center;
+    margin-top: 20px;
+    padding: 0 20px;
 }
 
 #message-input {
     flex-grow: 1;
-    padding: 8px 10px;
+    max-width: 600px;
+    padding: 12px 15px;
     border: 1px solid #3a3a3a;
-    border-radius: 4px 0 0 4px;
-    font-size: 0.9em;
+    border-radius: 20px 0 0 20px;
+    font-size: 1em;
     background-color: #2d2d2d;
     color: #e0e0e0;
 }
 
 #send-button {
-    padding: 8px 15px;
-    background-color: #1877f2; /* Facebook blue */
+    padding: 12px 25px;
+    background-color: #1877f2;
     color: white;
     border: none;
-    border-radius: 0 4px 4px 0;
+    border-radius: 0 20px 20px 0;
     cursor: pointer;
-    font-size: 0.9em;
+    font-size: 1em;
 }
 #send-button:hover {
     background-color: #166fe5;
@@ -245,4 +249,30 @@ body {
     border-radius: 3px;
     border: 1px solid #333;
     display: inline-block;
+}
+
+#description-panel p {
+    line-height: 1.6;
+    margin-bottom: 10px;
+}
+
+.speech-bubble {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+
+.speech-bubble-box {
+    stroke: #cccccc;
+    stroke-width: 1.5;
+    rx: 8;
+    ry: 8;
+    fill: rgba(45, 45, 45, 0.85);
+}
+
+.speech-bubble-text {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    fill: #e0e0e0;
+    pointer-events: none;
 }

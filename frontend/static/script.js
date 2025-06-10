@@ -1,12 +1,10 @@
 document.addEventListener('DOMContentLoaded', () => {
     const elements = {
         connectionChart: document.getElementById('connection-chart'),
-        feedMessages: document.getElementById('feed'),
         messageInput: document.getElementById('message-input'),
         sendButton: document.getElementById('send-button'),
         resetButton: document.getElementById('reset-button'),
-        toggleSimulationButton: document.getElementById('toggle-simulation'),
-        strategicCheckbox: document.getElementById('strategic-agents-checkbox')
+        toggleSimulationButton: document.getElementById('toggle-simulation')
     };
 
     let state = {
@@ -71,28 +69,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await response.json();
                 state.simulationRunning = (result.status === 'started');
                 updateSimulationButton();
-                addFeedMessage({ 
-                    sender_name: "System", 
-                    sender_index: -1, 
-                    message: result.message, 
-                    opinion_vector: [0.5] 
-                });
+                console.log("System:", result.message);
             } else {
                 const errorData = await response.json().catch(() => ({detail: "Toggle failed"}));
-                addFeedMessage({ 
-                    sender_name: "System", 
-                    sender_index: -1, 
-                    message: `Error: ${errorData.detail}`, 
-                    opinion_vector: [0.5] 
-                });
+                console.error(`Error: ${errorData.detail}`);
             }
         } catch (error) {
-            addFeedMessage({ 
-                sender_name: "System", 
-                sender_index: -1, 
-                message: "Network error controlling simulation.", 
-                opinion_vector: [0.5] 
-            });
+            console.error("Network error controlling simulation.");
         }
     }
 
@@ -122,12 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     initializeD3Network(state.currentOpinions, state.currentAdjacencyMatrix, state.agentNames, state.opinionAxes, state.currentEdgeWeights);
                 }
             } else if (message.type === 'system_message') {
-                addFeedMessage({ 
-                    sender_name: "System", 
-                    sender_index: -1,
-                    message: message.data.message, 
-                    opinion_vector: [0.5]
-                });
+                console.log("System:", message.data.message);
             }
         };
 
@@ -164,7 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.strategicAgentCount = stateData.strategic_agent_count || 0;
         state.userAgentIndex = stateData.user_agent_index !== undefined ? stateData.user_agent_index : 0;
         state.colorScalingParams = stateData.color_scaling_params || {x_min:0, x_max:1};
-        if(elements.strategicCheckbox) elements.strategicCheckbox.checked = state.includeStrategicAgents;
         state.currentAdjacencyMatrix = stateData.adjacency_matrix || [];
         state.currentEdgeWeights = stateData.edge_weights || [];
 
@@ -179,16 +156,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.nodeElements = null;
 
         if(elements.feedMessages) elements.feedMessages.innerHTML = '';
-    }
-
-    function getPastelColor(agentIndex, opinionVector) {
-        const pastelColors = ['#FFB3BA', '#BAFFC9', '#BAE1FF', '#FFFFBA', '#E1BAFF', '#FFDFBA', '#B3FFBA', '#BAD4FF', '#FFE1BA', '#D4BAFF'];
-        
-        if (agentIndex === -1) return '#6c757d';
-        if (agentIndex === state.userAgentIndex) return '#F0E68C';
-        if (state.includeStrategicAgents && agentIndex >= state.nAgents - state.strategicAgentCount) return '#A9A9A9';
-        
-        return pastelColors[agentIndex % pastelColors.length];
     }
 
     function generateAvatarData(agentCount) {
@@ -219,109 +186,87 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawAvatar(selection, avatarConfig, agentIndex, opinion = 0.5) {
+        const scaleFactor = 2; // Make avatars bigger
         const avatarGroup = selection.append('g')
             .attr('class', 'avatar')
-            .attr('transform', 'translate(-20, -20)');
+            .attr('transform', `translate(-${20 * scaleFactor}, -${20 * scaleFactor})`);
 
         // Head (circle)
         avatarGroup.append('circle')
             .attr('class', 'avatar-head')
-            .attr('cx', 20)
-            .attr('cy', 15)
-            .attr('r', 12)
+            .attr('cx', 20 * scaleFactor)
+            .attr('cy', 15 * scaleFactor)
+            .attr('r', 12 * scaleFactor)
             .attr('fill', avatarConfig.skinColor)
             .attr('stroke', '#333')
-            .attr('stroke-width', 1);
+            .attr('stroke-width', 1 * scaleFactor);
 
         // Eyes
         avatarGroup.append('circle')
-            .attr('cx', 16)
-            .attr('cy', 13)
-            .attr('r', 1.5)
+            .attr('cx', 16 * scaleFactor)
+            .attr('cy', 13 * scaleFactor)
+            .attr('r', 1.5 * scaleFactor)
             .attr('fill', '#000');
 
         avatarGroup.append('circle')
-            .attr('cx', 24)
-            .attr('cy', 13)
-            .attr('r', 1.5)
+            .attr('cx', 24 * scaleFactor)
+            .attr('cy', 13 * scaleFactor)
+            .attr('r', 1.5 * scaleFactor)
             .attr('fill', '#000');
 
         // Hair
         avatarGroup.append('path')
-            .attr('d', 'M 8 2 Q 20 0 32 2 Q 32 8 20 10 Q 8 8 8 2')
-            .attr('fill', avatarConfig.hairColor)
+            .attr('d', `M${8 * scaleFactor},${9 * scaleFactor} Q${20 * scaleFactor},${-5 * scaleFactor} ${32 * scaleFactor},${9 * scaleFactor} Z`)
+            .attr('fill', avatarConfig.hairColor);
+
+        // Body (simple rectangle)
+        avatarGroup.append('rect')
+            .attr('class', 'avatar-body')
+            .attr('x', 10 * scaleFactor)
+            .attr('y', 27 * scaleFactor)
+            .attr('width', 20 * scaleFactor)
+            .attr('height', 15 * scaleFactor)
+            .attr('fill', getShirtColorFromOpinion(opinion))
             .attr('stroke', '#333')
-            .attr('stroke-width', 1);
+            .attr('stroke-width', 1 * scaleFactor)
+            .attr('rx', 3 * scaleFactor);
 
         // Mouth based on expression
         let mouthPath;
         switch(avatarConfig.expression) {
             case 'happy':
-                mouthPath = 'M 16 18 Q 20 22 24 18';
+                mouthPath = `M ${16 * scaleFactor} ${18 * scaleFactor} Q ${20 * scaleFactor} ${22 * scaleFactor} ${24 * scaleFactor} ${18 * scaleFactor}`;
                 break;
             case 'concerned':
-                mouthPath = 'M 16 20 Q 20 16 24 20';
+                mouthPath = `M ${16 * scaleFactor} ${20 * scaleFactor} Q ${20 * scaleFactor} ${16 * scaleFactor} ${24 * scaleFactor} ${20 * scaleFactor}`;
                 break;
             case 'excited':
-                mouthPath = 'M 16 17 Q 20 23 24 17';
+                mouthPath = `M ${16 * scaleFactor} ${17 * scaleFactor} Q ${20 * scaleFactor} ${23 * scaleFactor} ${24 * scaleFactor} ${17 * scaleFactor}`;
                 break;
-            default:
-                mouthPath = 'M 16 19 L 24 19';
+            default: // neutral
+                mouthPath = `M ${16 * scaleFactor} ${19 * scaleFactor} L ${24 * scaleFactor} ${19 * scaleFactor}`;
         }
 
         avatarGroup.append('path')
             .attr('class', 'mouth')
             .attr('d', mouthPath)
             .attr('stroke', '#333')
-            .attr('stroke-width', 1.5)
+            .attr('stroke-width', 1 * scaleFactor)
             .attr('fill', 'none');
-
-        // Body (opinion-based shirt color)
-        avatarGroup.append('rect')
-            .attr('class', 'avatar-body')
-            .attr('x', 12)
-            .attr('y', 25)
-            .attr('width', 16)
-            .attr('height', 15)
-            .attr('fill', getShirtColorFromOpinion(opinion))
-            .attr('stroke', '#333')
-            .attr('stroke-width', 1)
-            .attr('rx', 2);
-
-        // Accessories
-        if (avatarConfig.accessory === 'glasses') {
-            avatarGroup.append('rect')
-                .attr('x', 14)
-                .attr('y', 11)
-                .attr('width', 6)
-                .attr('height', 4)
-                .attr('fill', 'none')
-                .attr('stroke', '#333')
-                .attr('stroke-width', 1);
-            
-            avatarGroup.append('rect')
-                .attr('x', 20)
-                .attr('y', 11)
-                .attr('width', 6)
-                .attr('height', 4)
-                .attr('fill', 'none')
-                .attr('stroke', '#333')
-                .attr('stroke-width', 1);
-        }
-
+        
         // Add "YOU" label for user's avatar
         if (agentIndex === state.userAgentIndex) {
             avatarGroup.append('text')
                 .attr('class', 'user-label')
-                .attr('x', 20)
-                .attr('y', 50)
+                .attr('x', 20 * scaleFactor)
+                .attr('y', 50 * scaleFactor)
                 .attr('text-anchor', 'middle')
                 .attr('font-family', 'Arial, sans-serif')
-                .attr('font-size', '10px')
+                .attr('font-size', '20px')
                 .attr('font-weight', 'bold')
                 .attr('fill', '#FFD700')
                 .attr('stroke', '#333')
-                .attr('stroke-width', 0.5)
+                .attr('stroke-width', 0.5 * scaleFactor)
                 .text('YOU');
         }
 
@@ -388,13 +333,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Generate avatar data for all agents
-        state.avatarData = generateAvatarData(opinions.length);
+        state.avatarData = generateAvatarData(state.nAgents);
         
         // Create D3 network elements
         const { svg, linkGroup, nodeGroup, width, height } = createD3NetworkElements();
         
         // Create nodes and links data
         const nodes = createD3Nodes(opinions, agentNamesArr);
+        nodes.forEach(d => {
+            if (!d.x || !d.y) {
+                d.x = Math.random() * width;
+                d.y = Math.random() * height;
+            }
+            d.radius = 60; // Increased node radius for bigger avatars
+        });
         const links = createD3Links(adjMatrix, edgeWeights);
         
         console.log(`Initializing network: ${nodes.length} agents, ${links.length} initial connections`);
@@ -516,19 +468,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                         d.opinion > 0.7 ? 'excited' : 'neutral';
                     
                     // Update mouth path
+                    const scaleFactor = 2; // Must match drawAvatar scaleFactor
                     let mouthPath;
                     switch(newExpression) {
                         case 'happy':
-                            mouthPath = 'M 16 18 Q 20 22 24 18';
+                            mouthPath = `M ${16 * scaleFactor} ${18 * scaleFactor} Q ${20 * scaleFactor} ${22 * scaleFactor} ${24 * scaleFactor} ${18 * scaleFactor}`;
                             break;
                         case 'concerned':
-                            mouthPath = 'M 16 20 Q 20 16 24 20';
+                            mouthPath = `M ${16 * scaleFactor} ${20 * scaleFactor} Q ${20 * scaleFactor} ${16 * scaleFactor} ${24 * scaleFactor} ${20 * scaleFactor}`;
                             break;
                         case 'excited':
-                            mouthPath = 'M 16 17 Q 20 23 24 17';
+                            mouthPath = `M ${16 * scaleFactor} ${17 * scaleFactor} Q ${20 * scaleFactor} ${23 * scaleFactor} ${24 * scaleFactor} ${17 * scaleFactor}`;
                             break;
                         default:
-                            mouthPath = 'M 16 19 L 24 19';
+                            mouthPath = `M ${16 * scaleFactor} ${19 * scaleFactor} L ${24 * scaleFactor} ${19 * scaleFactor}`;
                     }
                     
                     avatar.select('.mouth')
@@ -540,22 +493,92 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addFeedMessage(postData) {
-        if (!elements.feedMessages) return;
-        const { sender_name, sender_index, message, opinion_vector } = postData;
-        const postDiv = document.createElement('div');
-        postDiv.classList.add('feed-post');
-        const senderSpan = document.createElement('span');
-        senderSpan.classList.add('sender-name');
-        senderSpan.textContent = sender_name + ": ";
-        const messageSpan = document.createElement('span');
-        messageSpan.textContent = message;
-        postDiv.appendChild(senderSpan);
-        postDiv.appendChild(messageSpan);
-        const borderColor = getPastelColor(sender_index, opinion_vector || (state.currentOpinions[sender_index] ? state.currentOpinions[sender_index] : [0.5]));
-        postDiv.style.borderLeft = `4px solid ${borderColor}`;
-        elements.feedMessages.appendChild(postDiv);
-        elements.feedMessages.scrollTop = elements.feedMessages.scrollHeight;
+    function showSpeechBubble(nodeElement, message) {
+        console.log('Showing bubble for:', message);
+        // Simple text wrapping (split by space)
+        const words = message.split(' ');
+        const maxCharsPerLine = 20;
+        let lines = [];
+        let currentLine = '';
+
+        words.forEach(word => {
+            if ((currentLine + ' ' + word).length > maxCharsPerLine) {
+                lines.push(currentLine);
+                currentLine = word;
+            } else {
+                currentLine = currentLine ? `${currentLine} ${word}` : word;
+            }
+        });
+        lines.push(currentLine);
+
+        const bubblePadding = 10;
+        const lineHeight = 18;
+        const bubbleHeight = lines.length * lineHeight + bubblePadding;
+        const bubbleWidth = maxCharsPerLine * 7 + bubblePadding * 2; // Approximate width
+
+        const bubbleGroup = nodeElement.append('g')
+            .attr('class', 'speech-bubble')
+            .attr('transform', `translate(${-bubbleWidth / 2}, ${-bubbleHeight - 60})`);
+
+        bubbleGroup.append('rect')
+            .attr('class', 'speech-bubble-box')
+            .attr('width', bubbleWidth)
+            .attr('height', bubbleHeight)
+            .style('fill', 'rgba(30,30,30,0.8)');
+
+        const text = bubbleGroup.append('text')
+            .attr('class', 'speech-bubble-text')
+            .attr('x', bubblePadding)
+            .attr('y', bubblePadding + lineHeight / 2)
+            .attr('dominant-baseline', 'middle');
+
+        lines.forEach((line, i) => {
+            text.append('tspan')
+                .attr('x', bubblePadding)
+                .attr('dy', i === 0 ? 0 : lineHeight)
+                .text(line);
+        });
+
+        // Add tail
+        bubbleGroup.append('path')
+            .attr('d', `M ${bubbleWidth / 2 - 10} ${bubbleHeight} l 10 10 l 10 -10 z`)
+            .style('fill', 'rgba(30,30,30,0.8)');
+
+
+        // Fade in
+        bubbleGroup.transition()
+            .duration(300)
+            .style('opacity', 1);
+
+        // Fade out and remove
+        bubbleGroup.transition()
+            .delay(5000)
+            .duration(1000)
+            .style('opacity', 0)
+            .remove();
+    }
+
+    function addFeedMessage(postData, retryCount = 0) {
+        const { sender_index, message } = postData;
+
+        if (sender_index === -1) return;
+
+        if (!state.nodeElements || !state.nodeElements.nodes || state.nodeElements.nodes().length === 0) {
+            console.log(`Speech bubble: waiting for nodes to initialize. Retry ${retryCount + 1}/5.`);
+            if (retryCount < 5) {
+                setTimeout(() => addFeedMessage(postData, retryCount + 1), 300);
+            }
+            return;
+        }
+
+        // Find the specific node group for the sender
+        const nodeElement = d3.select(state.nodeElements.nodes()[sender_index]);
+
+        if (!nodeElement.empty()) {
+            showSpeechBubble(nodeElement, message);
+        } else {
+            console.warn(`Speech bubble: Could not find node element for sender_index ${sender_index}.`);
+        }
     }
 
     async function sendMessage() {
@@ -567,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 message: messageText,
                 opinion_vector: state.currentOpinions[state.userAgentIndex] || [0.5]
             };
-            addFeedMessage(userMessage);
+            addFeedMessage(userMessage); // Show bubble for user's own message immediately
             elements.messageInput.value = '';
             
             try {
@@ -578,16 +601,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({detail: "Send failed"}));
-                    addFeedMessage({ sender_name: "System", sender_index: -1, message: `Error sending: ${errorData.detail}`, opinion_vector: [0.5]});
+                    console.error(`Error sending: ${errorData.detail}`);
                 }
             } catch (error) {
-                addFeedMessage({ sender_name: "System", sender_index: -1, message: "Network error sending message.", opinion_vector: [0.5]});
+                console.error("Network error sending message.", error);
             }
         }
     }
 
     async function resetSimulation() {
-        const newStrategicChoice = elements.strategicCheckbox ? elements.strategicCheckbox.checked : state.includeStrategicAgents;
+        const newStrategicChoice = state.includeStrategicAgents;
         try {
             const response = await fetch('/api/reset_simulation', {
                 method: 'POST',
@@ -598,17 +621,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 const errorData = await response.json().catch(() => ({detail: "Reset failed"}));
                 throw new Error(`Reset failed: ${response.status} ${errorData.detail}`);
             }
-            addFeedMessage({ sender_name: "System", sender_index: -1, message: "Simulation reset successfully", opinion_vector: [0.5] });
             state.simulationRunning = false;
             updateSimulationButton();
         } catch (error) {
-            addFeedMessage({ sender_name: "System", sender_index: -1, message: `Reset error: ${error.message}`, opinion_vector: [0.5] });
+            console.error(`Reset error: ${error.message}`);
         }
     }
 
-    if (elements.sendButton) elements.sendButton.addEventListener('click', sendMessage);
-    if (elements.messageInput) elements.messageInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
-    if (elements.resetButton) elements.resetButton.addEventListener('click', resetSimulation);
+    if (elements.sendButton) {
+        elements.sendButton.addEventListener('click', sendMessage);
+    }
+    if(elements.messageInput) {
+        elements.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    }
+    if (elements.resetButton) {
+        elements.resetButton.addEventListener('click', resetSimulation);
+    }
     if (elements.toggleSimulationButton) {
         elements.toggleSimulationButton.addEventListener('click', toggleSimulation);
     }
