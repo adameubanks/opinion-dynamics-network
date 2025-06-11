@@ -6,44 +6,25 @@ body, h1, h2, h3, p, div, input, button, label {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+html {
+    height: 100%;
+    margin: 0;
+}
+
 body {
     background-color: #1a1a1a;
     color: #e0e0e0;
     line-height: 1.6;
     display: flex;
-    justify-content: center;
-    padding-top: 20px;
-}
-
-.app-container {
-    display: flex;
-    width: 95%;
-    max-width: 1600px;
-    height: 90vh; /*占める画面の高さ*/
-    background-color: #2d2d2d;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.3);
-    overflow: hidden; /* Child elements will be clipped if they overflow */
+    height: 100vh;
 }
 
 .main-content {
     flex-grow: 3; /* Takes 3 parts of space */
     display: flex;
-    flex-direction: row;
-    border-right: 1px solid #3a3a3a;
-    overflow: hidden; /* Prevent content from breaking layout */
-}
-
-#feed-container {
-    flex-basis: 420px; /* Fixed width like original */
-    min-width: 300px; /* Minimum width before squishing */
-    max-width: 500px; /* Max width */
-    flex-shrink: 0; /* Don't shrink */
-    display: flex;
     flex-direction: column;
     border-right: 1px solid #3a3a3a;
-    padding: 10px;
-    background-color: #252525;
+    overflow: hidden; /* Prevent content from breaking layout */
 }
 
 #visualization-container {
@@ -52,6 +33,8 @@ body {
     flex-direction: column;
     padding: 10px;
     overflow: hidden; /* Important for Plotly chart */
+    border-bottom: 1px solid #3a3a3a;
+    text-align: center;
 }
 
 .sidebar {
@@ -64,8 +47,8 @@ body {
     background-color: #1f1f1f;
 }
 
-#feed-container h2, #visualization-container h2, .sidebar h2 {
-    font-size: 1.2em;
+#visualization-container h1, .sidebar h2 {
+    font-size: 2.5em;
     color: #e0e0e0;
     margin-bottom: 10px;
     padding-bottom: 5px;
@@ -73,42 +56,34 @@ body {
     text-align: center;
 }
 
-.scrollable-feed, .scrollable-updates {
-    flex-grow: 1;
-    overflow-y: auto;
-    padding: 5px;
-    background-color: #2d2d2d;
-    border: 1px solid #3a3a3a;
-    border-radius: 4px;
-    margin-bottom: 10px;
-}
-
 .feed-input-area {
     display: flex;
-    justify-content: center;
-    margin-top: 20px;
-    padding: 0 20px;
+    flex-direction: column;
+    margin-top: auto;
 }
 
 #message-input {
-    flex-grow: 1;
-    max-width: 600px;
     padding: 12px 15px;
     border: 1px solid #3a3a3a;
-    border-radius: 20px 0 0 20px;
-    font-size: 1em;
-    background-color: #2d2d2d;
+    border-radius: 25px;
+    font-size: 1.4em;
+    background-color: #1a1a1a;
     color: #e0e0e0;
+    width: 85%;
+    height: 120px;
+    resize: vertical;
+    margin-bottom: 10px;
 }
 
 #send-button {
-    padding: 12px 25px;
     background-color: #1877f2;
     color: white;
     border: none;
-    border-radius: 0 20px 20px 0;
+    border-radius: 25px;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 1.4em;
+    padding: 16px 20px;
+    width: 100%;
 }
 #send-button:hover {
     background-color: #166fe5;
@@ -129,6 +104,8 @@ body {
     width: 100%;
     margin-bottom: 8px;
     color: #e0e0e0;
+    font-size: 1.2em;
+    padding: 15px;
 }
 
 #reset-button {
@@ -165,20 +142,6 @@ body {
     background-color: #c82333;
 }
 
-.feed-post {
-    padding: 8px;
-    margin-bottom: 8px;
-    border-radius: 4px;
-    background-color: #3a3a3a;
-    border-left: 4px solid transparent; /* For sender color hint */
-    color: #e0e0e0;
-}
-
-.feed-post .sender-name {
-    font-weight: bold;
-    margin-right: 5px;
-}
-
 /* D3 Network Visualization Styles */
 .d3-network-container {
     background: #1a1a1a;
@@ -193,8 +156,8 @@ body {
 }
 
 .network-edge {
-    stroke: #666666;
-    stroke-width: 1px;
+    stroke: #aaaaaa;
+    stroke-width: 2px;
     opacity: 0.4;
     transition: all 0.5s ease;
 }
@@ -203,6 +166,7 @@ body {
     stroke: #888888;
     stroke-width: 4px;
     opacity: 0.8;
+    transition: all 0.3s ease;
 }
 
 .network-edge.weak-connection {
@@ -230,22 +194,22 @@ body {
 .pizza-legend {
     display: flex;
     justify-content: center;
-    margin: 10px 0;
-    gap: 20px;
+    margin: 20px 0;
+    gap: 30px;
     flex-wrap: wrap;
 }
 
 .legend-item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.9em;
+    gap: 15px;
+    font-size: 1.5em;
     color: #e0e0e0;
 }
 
 .legend-color-box {
-    width: 16px;
-    height: 16px;
+    width: 30px;
+    height: 30px;
     border-radius: 3px;
     border: 1px solid #333;
     display: inline-block;
@@ -254,6 +218,7 @@ body {
 #description-panel p {
     line-height: 1.6;
     margin-bottom: 10px;
+    font-size: 1.1em;
 }
 
 .speech-bubble {
@@ -272,7 +237,7 @@ body {
 
 .speech-bubble-text {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    font-size: 16px;
+    font-size: 22px;
     fill: #e0e0e0;
     pointer-events: none;
 }

@@ -5,44 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Opinion Dynamics Network</title>
     <link rel="stylesheet" href="static/style.css">
-    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
 <body>
-    <div class="app-container">
-        <div class="main-content">
-            <div id="visualization-container">
-                <h2>🍍 Does Pineapple Go on Pizza? 🍕</h2>
-                <div id="connection-chart"></div>
-                <div id="pizza-legend" class="pizza-legend">
-                    <div class="legend-item">
-                        <div class="legend-color-box" style="background-color: #FF6B6B"></div>
-                        <span>Pineapple Haters</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color-box" style="background-color: #4ECDC4"></div>
-                        <span>Pineapple Lovers</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-color-box" style="background-color: #95A5A6"></div>
-                        <span>Undecided/Neutral</span>
-                    </div>
+    <div class="main-content">
+        <div id="visualization-container">
+            <h1>🍍 Does Pineapple Go on Pizza? 🍕</h1>
+            <div id="connection-chart"></div>
+            <div id="pizza-legend" class="pizza-legend">
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #FF6B6B"></div>
+                    <span>Pineapple Haters</span>
                 </div>
-                <div class="feed-input-area">
-                    <input type="text" id="message-input" placeholder="Enter your message...">
-                    <button id="send-button">Send</button>
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #4ECDC4"></div>
+                    <span>Pineapple Lovers</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color-box" style="background-color: #95A5A6"></div>
+                    <span>Undecided/Neutral</span>
                 </div>
             </div>
         </div>
-        <div class="sidebar">
-            <div id="description-panel">
-                <h2>About</h2>
-                <p>This simulation shows how opinions spread in a social network. Characters' shirt colors show their stance on pineapple on pizza, and they can influence each other.</p>
-            </div>
-            <div id="controls-panel">
-                <label for="toggle-simulation">Simulation:</label>
-                <button id="toggle-simulation">Start Simulation</button>
-                <button id="reset-button">Reset Simulation</button>
-            </div>
+    </div>
+    <div class="sidebar">
+        <div id="description-panel">
+            <h2>About</h2>
+            <p>This simulation shows how opinions spread in a social network. Characters' shirt colors show their stance on pineapple on pizza, and they can influence each other. Try to see if you can get the majority of the characters to agree on pineapple on pizza!</p>
+        </div>
+        <div id="controls-panel">
+            <button id="toggle-simulation">Start Simulation</button>
+            <button id="reset-button">Reset Simulation</button>
+        </div>
+        <div class="feed-input-area">
+            <textarea id="message-input" placeholder="Enter your message..."></textarea>
+            <button id="send-button">Send</button>
         </div>
     </div>
     <script src="static/script.js"></script>

@@ -162,7 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const hairColors = ['#8B4513', '#FFD700', '#000000', '#FF6347', '#9370DB'];
         const skinColors = ['#FDBCB4', '#F1C27D', '#E0AC69', '#C68642', '#8D5524'];
         const expressions = ['happy', 'neutral', 'concerned', 'excited', 'thoughtful'];
-        const accessories = ['none', 'glasses', 'hat', 'earrings', 'necklace'];
         
         const avatars = [];
         for (let i = 0; i < agentCount; i++) {
@@ -170,7 +169,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 hairColor: hairColors[i % hairColors.length],
                 skinColor: skinColors[(Math.floor(i / hairColors.length)) % skinColors.length],
                 expression: expressions[Math.floor(Math.random() * expressions.length)],
-                accessory: accessories[Math.floor(Math.random() * accessories.length)]
             });
         }
         return avatars;
@@ -179,14 +177,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function getShirtColorFromOpinion(opinion) {
         // Pineapple haters (red shirts) - opinion < 0.45
         if (opinion < 0.45) return '#FF6B6B'; // Red for haters
-        // Pineapple lovers (green shirts) - opinion > 0.55  
+        // Pineapple lovers (green shirts) - opinion > 0.55
         if (opinion > 0.55) return '#4ECDC4'; // Teal/green for lovers
         // Neutral/undecided (gray shirts) - opinion 0.45-0.55
         return '#95A5A6'; // Gray for neutral
     }
 
     function drawAvatar(selection, avatarConfig, agentIndex, opinion = 0.5) {
-        const scaleFactor = 2; // Make avatars bigger
+        const scaleFactor = 2.5; // Make avatars bigger
         const avatarGroup = selection.append('g')
             .attr('class', 'avatar')
             .attr('transform', `translate(-${20 * scaleFactor}, -${20 * scaleFactor})`);
@@ -259,10 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
             avatarGroup.append('text')
                 .attr('class', 'user-label')
                 .attr('x', 20 * scaleFactor)
-                .attr('y', 50 * scaleFactor)
+                .attr('y', 50 * scaleFactor) // Adjusted y offset
                 .attr('text-anchor', 'middle')
                 .attr('font-family', 'Arial, sans-serif')
-                .attr('font-size', '20px')
+                .attr('font-size', '25px')
                 .attr('font-weight', 'bold')
                 .attr('fill', '#FFD700')
                 .attr('stroke', '#333')
@@ -273,13 +271,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return avatarGroup;
     }
 
-    function createD3Nodes(opinions, agentNames) {
+    function createD3Nodes(opinions, agentNames, height) {
         return opinions.map((opinion, i) => ({
             id: i,
             name: agentNames[i] || `Agent ${i}`,
             opinion: opinion[0],
             x: 100 + (600 * opinion[0]) + (Math.random() - 0.5) * 50,
-            y: 250 + (Math.random() - 0.5) * 200,
+            y: (Math.random() < 0.5 ? Math.random() * 0.4 : 1 - Math.random() * 0.4) * height,
             isUser: i === state.userAgentIndex,
             isStrategic: state.includeStrategicAgents && i >= state.nAgents - state.strategicAgentCount
         }));
@@ -295,9 +293,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         source: i,
                         target: j,
                         weight: weight,
-                        distance: Math.max(30, 200 * (1 - weight)), // Stronger variation: closer opinions = much shorter distance
-                        opacity: Math.max(0.2, weight), // Higher weight = more visible
-                        thickness: Math.max(0.5, weight * 5) // Higher weight = much thicker line
+                        distance: Math.max(30, 200 * (1 - weight)),
+                        opacity: Math.max(0.2, weight),
+                        thickness: Math.max(1, weight * 15)
                     });
                 }
             }
@@ -339,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const { svg, linkGroup, nodeGroup, width, height } = createD3NetworkElements();
         
         // Create nodes and links data
-        const nodes = createD3Nodes(opinions, agentNamesArr);
+        const nodes = createD3Nodes(opinions, agentNamesArr, height);
         nodes.forEach(d => {
             if (!d.x || !d.y) {
                 d.x = Math.random() * width;
@@ -355,8 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Setup force simulation with extreme polarization and centering
         state.simulation = d3.forceSimulation(nodes)
             .force("link", d3.forceLink(links).id(d => d.id).distance(d => d.distance).strength(d => d.weight * 0.1)) // Weaker links
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("collision", d3.forceCollide().radius(15)) // Smaller collision radius
+            .force("charge", d3.forceManyBody().strength(-500))
+            .force("collision", d3.forceCollide().radius(38)) // Smaller collision radius
             .force("opinion_cluster", d3.forceX(d => width * 0.05 + (width * 0.9 * d.opinion)).strength(2.5)) // Much stronger
             .force("influence", d3.forceX().strength(0))
             .force("y_centering", d3.forceY(height / 2).strength(0.1)); // Gentle vertical centering
@@ -369,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('class', 'network-edge')
             .attr('stroke-width', d => d.thickness)
             .attr('stroke-opacity', d => d.opacity)
-            .attr('stroke', '#999');
+            .attr('stroke', '#FFFFFF');
 
         // Create node elements
         const nodeElements = nodeGroup.selectAll('.network-node')
@@ -387,6 +385,9 @@ document.addEventListener('DOMContentLoaded', () => {
         nodeElements.each(function(d, i) {
             drawAvatar(d3.select(this), state.avatarData[i], i, d.opinion);
         });
+
+        // Ensure user node is on top
+        nodeElements.filter('.user-node').raise();
 
         // Update positions on simulation tick
         state.simulation.on("tick", () => {
@@ -448,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
             linkUpdate.exit().remove();
             const linkEnter = linkUpdate.enter().append('line')
                 .attr('class', 'network-edge')
-                .attr('stroke', '#999');
+                .attr('stroke', '#FFFFFF');
             state.linkElements = linkEnter.merge(linkUpdate)
                 .attr('stroke-width', d => d.thickness)
                 .attr('stroke-opacity', d => d.opacity);
@@ -468,7 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         d.opinion > 0.7 ? 'excited' : 'neutral';
                     
                     // Update mouth path
-                    const scaleFactor = 2; // Must match drawAvatar scaleFactor
+                    const scaleFactor = 2.5; // Must match drawAvatar scaleFactor
                     let mouthPath;
                     switch(newExpression) {
                         case 'happy':
@@ -495,6 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showSpeechBubble(nodeElement, message) {
         console.log('Showing bubble for:', message);
+        nodeElement.raise();
         // Simple text wrapping (split by space)
         const words = message.split(' ');
         const maxCharsPerLine = 20;
@@ -511,20 +513,39 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         lines.push(currentLine);
 
-        const bubblePadding = 10;
-        const lineHeight = 18;
+        const bubblePadding = 15;
+        const lineHeight = 28;
         const bubbleHeight = lines.length * lineHeight + bubblePadding;
-        const bubbleWidth = maxCharsPerLine * 7 + bubblePadding * 2; // Approximate width
+        const bubbleWidth = maxCharsPerLine * 11 + bubblePadding * 2; // Approximate width
 
         const bubbleGroup = nodeElement.append('g')
             .attr('class', 'speech-bubble')
-            .attr('transform', `translate(${-bubbleWidth / 2}, ${-bubbleHeight - 60})`);
+            .attr('transform', `translate(${-bubbleWidth / 2}, ${-bubbleHeight - 75})`);
 
-        bubbleGroup.append('rect')
-            .attr('class', 'speech-bubble-box')
-            .attr('width', bubbleWidth)
-            .attr('height', bubbleHeight)
-            .style('fill', 'rgba(30,30,30,0.8)');
+        const r = 8; // corner radius
+        const tailHeight = 10;
+        const tailWidth = 20;
+        const pathData = `
+            M ${r},0
+            H ${bubbleWidth - r}
+            A ${r},${r} 0 0 1 ${bubbleWidth},${r}
+            V ${bubbleHeight - r}
+            A ${r},${r} 0 0 1 ${bubbleWidth - r},${bubbleHeight}
+            H ${bubbleWidth / 2 + tailWidth / 2}
+            L ${bubbleWidth / 2},${bubbleHeight + tailHeight}
+            L ${bubbleWidth / 2 - tailWidth / 2},${bubbleHeight}
+            H ${r}
+            A ${r},${r} 0 0 1 0,${bubbleHeight - r}
+            V ${r}
+            A ${r},${r} 0 0 1 ${r},0
+            Z
+        `;
+
+        bubbleGroup.append('path')
+            .attr('d', pathData.trim())
+            .style('fill', 'rgba(30,30,30,0.8)')
+            .style('stroke', '#CCCCCC')
+            .style('stroke-width', 1.5);
 
         const text = bubbleGroup.append('text')
             .attr('class', 'speech-bubble-text')
@@ -538,12 +559,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 .attr('dy', i === 0 ? 0 : lineHeight)
                 .text(line);
         });
-
-        // Add tail
-        bubbleGroup.append('path')
-            .attr('d', `M ${bubbleWidth / 2 - 10} ${bubbleHeight} l 10 10 l 10 -10 z`)
-            .style('fill', 'rgba(30,30,30,0.8)');
-
 
         // Fade in
         bubbleGroup.transition()
