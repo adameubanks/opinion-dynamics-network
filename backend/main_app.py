@@ -31,6 +31,7 @@ SIM_PARAMS = {
     "user_alpha": 0.5,
     "strategic_agents_initial_opinion_targets": [[0.5]],
     "strategic_theta": 0.5,
+    "theta": 7,
     "time_between_posts": 4.0,
     "posts_per_cycle": 3,
     "init_updates": 0,
@@ -123,9 +124,7 @@ def initialize_network_and_poster():
         user_alpha=SIM_PARAMS["user_alpha"],
         strategic_agents=SIM_PARAMS.get("strategic_agents_initial_opinion_targets", []),
         strategic_theta=SIM_PARAMS["strategic_theta"],
-        max_connection_distance=0.2,
-        similarity_ratio=0.8,
-        random_ratio=0.2
+        theta=SIM_PARAMS["theta"]
     )
     SIM_STATE["poster_instance"] = Poster(API_KEY, OPINION_AXES, dummy_mode=USE_DUMMY_POSTER)
     
@@ -250,11 +249,6 @@ async def send_user_message(user_message: UserMessage):
              SIM_STATE["network_instance"].add_user_opinion(np.array(SIM_PARAMS["user_agents_initial_opinion"][0]), user_index=user_agent_index)
 
     if SIM_STATE["network_instance"] and user_opinion_vector:
-        SIM_STATE["network_instance"].apply_user_post_influence(
-            user_index=user_agent_index,
-            analyzed_opinion=user_opinion_vector,
-            influence_strength=0.1
-        )
         SIM_STATE["network_instance"].update_network(include_user_opinions=True)
         X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
         current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
@@ -397,11 +391,6 @@ async def simulation_loop_task():
                         try:
                             analyzed_opinion = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, post_content)
                             if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
-                                SIM_STATE["network_instance"].apply_user_post_influence(
-                                    user_index=agent_idx,
-                                    analyzed_opinion=analyzed_opinion,
-                                    influence_strength=0.1
-                                )
                                 SIM_STATE["network_instance"].update_network(include_user_opinions=False)
 
                                 X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
