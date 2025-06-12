@@ -2,35 +2,32 @@
 import ast
 import random
 from openai import OpenAI
+from typing import List, Dict
+import numpy as np
 
 class Poster:
-    def __init__(self, api_key, opinion_axes, max_history=8, dummy_mode=False):
+    def __init__(self, api_key, opinion_axes, max_history=8):
         self.client = OpenAI(api_key=api_key)
         self.opinion_axes = opinion_axes
         self.chat_history = []
         self.max_history = max_history
-        self.dummy_mode = dummy_mode
 
-    def _validate_opinion_vector(self, vector_str):
+    def _validate_opinion_vector(self, result):
         try:
-            vector = ast.literal_eval(vector_str)
-            if not isinstance(vector, list) or len(vector) != len(self.opinion_axes):
+            vector = eval(result)
+            if not isinstance(vector, list):
                 return None
-            if not all(isinstance(x, (int, float)) and 0 <= x <= 1 for x in vector):
+            if not all(isinstance(x, (int, float)) for x in vector):
                 return None
-            return vector
+            if not all(0 <= x <= 1 for x in vector):
+                return None
+            while len(vector) < len(self.opinion_axes):
+                vector.append(0.5)
+            return vector[:len(self.opinion_axes)]
         except:
             return None
 
     def analyze_post(self, post, max_retries=5):
-        if self.dummy_mode:
-            val1 = (len(post) % 10) / 10.0
-            val2 = (hash(post) % 10) / 10.0
-            dummy_vector = [round(val1, 2), round(val2, 2)]
-            while len(dummy_vector) < len(self.opinion_axes):
-                dummy_vector.append(round(random.uniform(0.3, 0.7), 2))
-            return dummy_vector[:len(self.opinion_axes)]
-
         system_prompt = "You analyze social media posts and output opinion vectors. "
         system_prompt += "For each topic, rate the opinion on a scale of 0.0 to 1.0 where:\n"
         for i, axis in enumerate(self.opinion_axes):
@@ -39,6 +36,7 @@ class Poster:
             system_prompt += f"1.0 = Strongly agrees with: {axis['pro']}\n"
             system_prompt += "0.5 = Neutral or topic not addressed\n"
         system_prompt += "\nOutput ONLY a Python list of floats, e.g. [0.8, 0.2]"
+        
         for attempt in range(max_retries):
             try:
                 completion = self.client.chat.completions.create(
@@ -62,18 +60,6 @@ class Poster:
         topic_idx = random.choice(range(len(self.opinion_axes)))
         axis = self.opinion_axes[topic_idx]
         opinion_on_topic = opinion_vector[topic_idx]
-
-        if self.dummy_mode:
-            dummy_post = f"{name}: My thoughts on {axis['name']}? I'd say it's about a {opinion_on_topic:.2f}/1.0 for me! What do you all think?"
-            if opinion_on_topic > 0.7:
-                dummy_post = f"{name}: Absolutely agree with the pro side of {axis['name']}! It's clearly a {opinion_on_topic:.2f}! #TotallyForIt"
-            elif opinion_on_topic < 0.3:
-                dummy_post = f"{name}: Strongly against on {axis['name']}. It's a {opinion_on_topic:.2f} from me. #HardPass"
-            
-            self.chat_history.append({"author": name, "post": dummy_post})
-            if len(self.chat_history) > self.max_history:
-                self.chat_history.pop(0)
-            return dummy_post
 
         if len(opinion_vector) != len(self.opinion_axes):
             raise ValueError("Opinion vector length must match number of axes")

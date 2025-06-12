@@ -15,10 +15,10 @@ from typing import List, Dict
 
 from .network_backend import Network
 from .chatgpt_interface import Poster
+from .pre_generated_posts import get_post_for_opinion
 
-load_dotenv(dotenv_path='../../.env')
+load_dotenv()
 API_KEY = os.getenv("OPENAI_API_KEY")
-USE_DUMMY_POSTER = os.getenv("USE_DUMMY_POSTER", "False").lower() == "true"
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
@@ -33,10 +33,11 @@ SIM_PARAMS = {
     "strategic_theta": 0.5,
     "theta": 7,
     "time_between_posts": 4.0,
-    "posts_per_cycle": 3,
+    "posts_per_cycle": 1,
     "init_updates": 0,
     "include_strategic_agents": False,
-    "loop_sleep_time": 5.0
+    "loop_sleep_time": 5.0,
+    "use_pregenerated_posts": True
 }
 
 OPINION_AXES = [
@@ -59,7 +60,8 @@ SIM_STATE = {
     "simulation_task": None,
     "current_bot_names": np.array(BOT_NAMES[:SIM_PARAMS["n_agents"]]),
     "user_posted_this_cycle_flag": False,
-    "simulation_running": False
+    "simulation_running": False,
+    "user_has_posted": False
 }
 
 class ConnectionManager:
@@ -126,7 +128,7 @@ def initialize_network_and_poster():
         strategic_theta=SIM_PARAMS["strategic_theta"],
         theta=SIM_PARAMS["theta"]
     )
-    SIM_STATE["poster_instance"] = Poster(API_KEY, OPINION_AXES, dummy_mode=USE_DUMMY_POSTER)
+    SIM_STATE["poster_instance"] = Poster(API_KEY, OPINION_AXES)
     
     if SIM_STATE["network_instance"]: 
         for _ in range(SIM_PARAMS["init_updates"]):
@@ -229,6 +231,7 @@ async def send_user_message(user_message: UserMessage):
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
     user_agent_index = 0
+    SIM_STATE["user_has_posted"] = True
 
     try:
         user_opinion_vector = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, message_text)
@@ -268,6 +271,7 @@ async def reset_simulation_api(config: ResetConfig):
     if SIM_STATE["simulation_running"]:
         await control_simulation(SimulationControl(action="stop"))
     
+    SIM_STATE["user_has_posted"] = False
     initialize_network_and_poster()
 
     if SIM_STATE["network_instance"] and SIM_STATE["poster_instance"]:
@@ -386,24 +390,30 @@ async def simulation_loop_task():
                         if time.time() - last_post_time_cycle < post_delay:
                              await asyncio.sleep(max(0, post_delay - (time.time() - last_post_time_cycle)))
                         
-                        post_content = await asyncio.to_thread(SIM_STATE["poster_instance"].generate_post, agent_name, agent_opinion)
-                        
-                        try:
-                            analyzed_opinion = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, post_content)
+                        if SIM_PARAMS["use_pregenerated_posts"] and not SIM_STATE["user_has_posted"]:
+                            post_data = get_post_for_opinion(agent_opinion[0])
+                            post_content = post_data["text"]
+                            analyzed_opinion = post_data["sentiment"]
                             if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
                                 SIM_STATE["network_instance"].update_network(include_user_opinions=False)
-
-                                X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
-                                current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
-                                await manager.broadcast_json({
-                                    "type": "opinion_update",
-                                    "data": X_updated.tolist(),
-                                    "adjacency_matrix": A_updated.tolist(),
-                                    "edge_weights": edge_weights_updated.tolist(),
-                                    "color_scaling_params": current_color_params
-                                })
-                        except Exception:
-                            pass
+                        else:
+                            post_content = await asyncio.to_thread(SIM_STATE["poster_instance"].generate_post, agent_name, agent_opinion)
+                            try:
+                                analyzed_opinion = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, post_content)
+                                if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
+                                    SIM_STATE["network_instance"].update_network(include_user_opinions=SIM_STATE["user_has_posted"])
+                            except Exception:
+                                analyzed_opinion = agent_opinion
+                        
+                        X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
+                        current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)
+                        await manager.broadcast_json({
+                            "type": "opinion_update",
+                            "data": X_updated.tolist(),
+                            "adjacency_matrix": A_updated.tolist(),
+                            "edge_weights": edge_weights_updated.tolist(),
+                            "color_scaling_params": current_color_params
+                        })
                         
                         await manager.broadcast_json({
                             "type": "new_post",
