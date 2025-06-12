@@ -415,10 +415,10 @@ async def simulation_loop_task():
                             }
                         })
                         last_post_time_cycle = time.time()
-                    except Exception:
+                    except Exception as e:
                         await manager.broadcast_json({
                             "type": "system_message",
-                            "data": {"message": f"System: Error with {agent_name}'s post."}
+                            "data": {"message": f"System: Error with {agent_name}'s post. {e}"}
                         })
 
             if SIM_STATE["network_instance"] and SIM_STATE["simulation_running"]:
