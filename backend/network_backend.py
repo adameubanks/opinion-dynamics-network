@@ -50,15 +50,12 @@ def calculate_edge_weights(X):
     
     return weights
 
-def update_A(s_norm, theta=1, min_prob=0.01):
-    s_hat = get_r(s_norm ** theta)
-    s_hat[s_hat < min_prob] = min_prob
-    s_hat -= np.triu(s_hat)
-    A = s_hat - np.random.random(s_hat.shape)
-    A[A < 0] = 0
-    A[A > 0] = 1
-    A = A.astype(int)
-    return np.maximum(A, A.T)
+def initialize_random_A(n_agents, p=0.1):
+    """Initializes a random, symmetric adjacency matrix."""
+    A = (np.random.rand(n_agents, n_agents) < p).astype(int)
+    A = np.maximum(A, A.T)
+    np.fill_diagonal(A, 0)
+    return A
 
 def get_strategic_opinion(a, X, target, theta=7):
     if np.sum(a) > 0:
@@ -121,7 +118,7 @@ class Network:
         self.strategic_agents = np.array(self.strategic_agents)
 
         if A is None:
-            self.A = update_A(get_s_norm(self.X), theta=theta, min_prob=min_prob)
+            self.A = initialize_random_A(self.n_agents, p=0.1)
             if self.n_strategic_agents > 0:
                 self.A[-self.n_strategic_agents:, -self.n_strategic_agents:] = 0
         else:
@@ -151,7 +148,6 @@ class Network:
                 new_X[i + self.n_agents - self.n_strategic_agents] = get_strategic_opinion(adjusted_A[i + self.n_agents - self.n_strategic_agents], self.X, self.strategic_agents[i], theta=self.strategic_theta)
 
         self.X = self.alpha_filter * new_X + (1 - self.alpha_filter) * self.X
-        self.A = update_A(s_norm, theta=self.theta, min_prob=self.min_prob)
         self.time_step += 1
 
         if self.n_strategic_agents > 0:
