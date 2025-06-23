@@ -1,7 +1,7 @@
+import numpy as np
 from typing import List, Dict, Tuple
 import random
 
-# Opinion ranges and corresponding posts with their sentiment values
 OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
     (0.0, 0.2): [
         {
@@ -43,6 +43,18 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
         {
             "text": "I don't have strong feelings about pineapple on pizza either way.",
             "sentiment": [0.55]
+        },
+        {
+            "text": "Pineapple on pizza doesn't really bother me. I can see why some people might like it.",
+            "sentiment": [0.52]
+        },
+        {
+            "text": "Sometimes I'm in the mood for pineapple on pizza, sometimes I'm not. It really depends.",
+            "sentiment": [0.48]
+        },
+        {
+            "text": "It's just pizza, and pineapple is just another topping. Not a big deal.",
+            "sentiment": [0.58]
         }
     ],
     (0.6, 0.8): [
@@ -76,9 +88,16 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
 }
 
 def get_post_for_opinion(opinion: float) -> Dict[str, any]:
-    """Get a random pre-generated post and its sentiment for the given opinion value."""
+    NEUTRALITY_STRENGTH = 4.0
+    OPINION_INFLUENCE = 1.0
+
+    alpha = (NEUTRALITY_STRENGTH * opinion) + OPINION_INFLUENCE
+    beta = (NEUTRALITY_STRENGTH * (1 - opinion)) + OPINION_INFLUENCE
+
+    sampled_opinion = np.random.beta(a=alpha, b=beta)
+
     for (min_val, max_val), posts in OPINION_POSTS.items():
-        if min_val <= opinion < max_val:
+        if min_val <= sampled_opinion < max_val:
             return random.choice(posts)
-    # Fallback for edge cases
+        
     return random.choice(list(OPINION_POSTS.values())[0]) 

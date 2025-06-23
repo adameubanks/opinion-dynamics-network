@@ -50,28 +50,29 @@ def calculate_edge_weights(X):
     
     return weights
 
-def initialize_random_A(n_agents, p=0.1):
-    """Initializes a random, symmetric adjacency matrix."""
+def initialize_random_A(n_agents, p=0.1, min_connections=2):
+    """Initializes a random, symmetric adjacency matrix with guaranteed minimum connections."""
     A = (np.random.rand(n_agents, n_agents) < p).astype(int)
     A = np.maximum(A, A.T)
     np.fill_diagonal(A, 0)
+    
+    # Ensure each agent has at least min_connections
+    for i in range(n_agents):
+        current_connections = np.sum(A[i])
+        if current_connections < min_connections:
+            available_agents = np.where(A[i] == 0)[0]
+            available_agents = available_agents[available_agents != i]  # Remove self
+            if len(available_agents) > 0:
+                needed_connections = min(min_connections - current_connections, len(available_agents))
+                new_connections = np.random.choice(available_agents, needed_connections, replace=False)
+                for j in new_connections:
+                    A[i, j] = 1
+                    A[j, i] = 1
     return A
-
-def get_strategic_opinion(a, X, target, theta=7):
-    if np.sum(a) > 0:
-        neighbor_x = X.copy()[a == 1]
-        neighbor_dists = np.sqrt(np.sum((neighbor_x - target) ** 2, axis=1))
-        weights = np.append(neighbor_dists, np.min(neighbor_dists) / 2)
-        weights /= np.sum(weights)
-        weights = weights ** theta
-        weights /= np.sum(weights)
-        return weights @ np.vstack((neighbor_x, target))
-    else:
-        return np.mean(X, axis=0)
 
 class Network:
     def __init__(self, n_agents=50, n_opinions=3, X=None, A=None, theta=7, min_prob=0.01, alpha_filter=0.5,
-                 user_agents=[], user_alpha=0.5, strategic_agents=[], strategic_theta=-100):
+                 user_agents=[], user_alpha=0.5):
         # Basic assertions
         assert n_agents > 0 and isinstance(n_agents, (int, np.integer))
         assert n_opinions > 0 and isinstance(n_opinions, (int, np.integer))
@@ -92,8 +93,8 @@ class Network:
             assert X.shape == (n_agents, n_opinions)
             self.X = X.copy()
 
-        # Ensure there is enough room for user and strategic agents.
-        assert len(user_agents) + len(strategic_agents) <= n_agents
+        # Ensure there is enough room for user agents.
+        assert len(user_agents) <= n_agents
 
         self.n_user_agents = len(user_agents)
         self.user_agents = user_agents.copy()
@@ -106,21 +107,8 @@ class Network:
                 self.X[i] = self.user_agents[i]
         self.user_agents = np.array(self.user_agents)
 
-        self.n_strategic_agents = len(strategic_agents)
-        self.strategic_agents = strategic_agents.copy()
-        self.strategic_theta = strategic_theta
-        for i in range(self.n_strategic_agents):
-            if self.strategic_agents[i] is None:
-                self.strategic_agents[i] = self.X[i + self.n_agents - self.n_strategic_agents]
-            else:
-                assert len(self.strategic_agents[i]) == n_opinions
-            self.X[i + self.n_agents - self.n_strategic_agents] = np.mean(self.X[:-self.n_strategic_agents], axis=0)
-        self.strategic_agents = np.array(self.strategic_agents)
-
         if A is None:
-            self.A = initialize_random_A(self.n_agents, p=0.1)
-            if self.n_strategic_agents > 0:
-                self.A[-self.n_strategic_agents:, -self.n_strategic_agents:] = 0
+            self.A = initialize_random_A(self.n_agents, p=0.1, min_connections=2)
         else:
             assert A.shape == (n_agents, n_agents)
             self.A = A.copy()
@@ -130,10 +118,22 @@ class Network:
     def get_state(self):
         return self.X.copy(), self.A.copy(), self.time_step, self.edge_weights.copy()
 
+    def set_agent_opinion(self, agent_index, new_opinion):
+        """Sets the opinion of a specific agent."""
+        if not (0 <= agent_index < self.n_agents):
+            raise ValueError(f"Agent index {agent_index} is out of bounds.")
+        if not isinstance(new_opinion, np.ndarray):
+            new_opinion = np.array(new_opinion)
+        if new_opinion.shape != (self.n_opinions,):
+            raise ValueError(f"Opinion vector shape mismatch. Expected {(self.n_opinions,)}, got {new_opinion.shape}.")
+        
+        self.X[agent_index] = new_opinion
+
     def add_user_opinion(self, opinion, user_index=0):
         assert 0 <= user_index < self.n_user_agents
-        self.user_agents[user_index] = self.user_alpha * np.array(opinion) + (1 * self.user_alpha) * self.user_agents[user_index]
-        self.X[user_index] = self.user_agents[user_index]
+        smoothed_opinion = self.user_alpha * np.array(opinion) + (1 - self.user_alpha) * self.user_agents[user_index]
+        self.user_agents[user_index] = smoothed_opinion        
+        self.set_agent_opinion(user_index, smoothed_opinion)
 
     def update_network(self, include_user_opinions=True):
         s_norm = get_s_norm(self.X)
@@ -143,15 +143,8 @@ class Network:
             adjusted_A[:, :self.n_user_agents] = 0
         new_X = get_W(s_norm, adjusted_A) @ self.X
 
-        if self.n_strategic_agents > 0:
-            for i in range(self.n_strategic_agents):
-                new_X[i + self.n_agents - self.n_strategic_agents] = get_strategic_opinion(adjusted_A[i + self.n_agents - self.n_strategic_agents], self.X, self.strategic_agents[i], theta=self.strategic_theta)
-
         self.X = self.alpha_filter * new_X + (1 - self.alpha_filter) * self.X
         self.time_step += 1
-
-        if self.n_strategic_agents > 0:
-            self.A[-self.n_strategic_agents:, -self.n_strategic_agents:] = 0
 
         if self.n_user_agents > 0:
             self.X[:self.n_user_agents] = self.user_agents

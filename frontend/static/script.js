@@ -12,8 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
         agentNames: [],
         opinionAxes: [],
         nAgents: 0,
-        includeStrategicAgents: true,
-        strategicAgentCount: 0,
         userAgentIndex: 0,
         colorScalingParams: {},
         currentAdjacencyMatrix: [],
@@ -138,8 +136,6 @@ document.addEventListener('DOMContentLoaded', () => {
         state.agentNames = stateData.agent_names || [];
         state.opinionAxes = stateData.opinion_axes || [{name: 'X-Axis', pro:'', con:''}];
         state.nAgents = stateData.n_agents || 0;
-        state.includeStrategicAgents = stateData.include_strategic_agents !== undefined ? stateData.include_strategic_agents : true;
-        state.strategicAgentCount = stateData.strategic_agent_count || 0;
         state.userAgentIndex = stateData.user_agent_index !== undefined ? stateData.user_agent_index : 0;
         state.colorScalingParams = stateData.color_scaling_params || {x_min:0, x_max:1};
         state.currentAdjacencyMatrix = stateData.adjacency_matrix || [];
@@ -175,11 +171,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getShirtColorFromOpinion(opinion) {
-        // Pineapple haters (red shirts) - opinion < 0.45
         if (opinion < 0.45) return '#FF6B6B'; // Red for haters
-        // Pineapple lovers (green shirts) - opinion > 0.55
         if (opinion > 0.55) return '#4ECDC4'; // Teal/green for lovers
-        // Neutral/undecided (gray shirts) - opinion 0.45-0.55
         return '#95A5A6'; // Gray for neutral
     }
 
@@ -271,15 +264,34 @@ document.addEventListener('DOMContentLoaded', () => {
         return avatarGroup;
     }
 
+    function createBoundaryForce(width, height, margin = 60) {
+        return function(alpha) {
+            for (let i = 0, n = this.nodes.length, node, x, y; i < n; ++i) {
+                node = this.nodes[i];
+                x = node.x;
+                y = node.y;
+                
+                // Apply boundary forces
+                if (x < margin) node.vx += (margin - x) * alpha * 0.3;
+                if (x > width - margin) node.vx += (width - margin - x) * alpha * 0.3;
+                if (y < margin) node.vy += (margin - y) * alpha * 0.3;
+                if (y > height - margin) node.vy += (height - margin - y) * alpha * 0.3;
+            }
+        };
+    }
+
     function createD3Nodes(opinions, agentNames, height) {
+        const container = d3.select('#connection-chart');
+        const width = container.node().getBoundingClientRect().width;
+        const margin = 60;
+        
         return opinions.map((opinion, i) => ({
             id: i,
             name: agentNames[i] || `Agent ${i}`,
             opinion: opinion[0],
-            x: 100 + (600 * opinion[0]) + (Math.random() - 0.5) * 50,
-            y: (Math.random() < 0.5 ? Math.random() * 0.4 : 1 - Math.random() * 0.4) * height,
+            x: margin + (width - 2 * margin) * opinion[0] + (Math.random() - 0.5) * 30,
+            y: margin + (height - 2 * margin) * (0.3 + Math.random() * 0.4),
             isUser: i === state.userAgentIndex,
-            isStrategic: state.includeStrategicAgents && i >= state.nAgents - state.strategicAgentCount
         }));
     }
 
@@ -357,7 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
             .force("collision", d3.forceCollide().radius(38)) // Smaller collision radius
             .force("opinion_cluster", d3.forceX(d => width * 0.05 + (width * 0.9 * d.opinion)).strength(2.5)) // Much stronger
             .force("influence", d3.forceX().strength(0))
-            .force("y_centering", d3.forceY(height / 2).strength(0.1)); // Gentle vertical centering
+            .force("y_centering", d3.forceY(height / 2).strength(0.1)) // Gentle vertical centering
+            .force("boundary", createBoundaryForce(width, height, 60)); // Keep nodes in viewport
 
         // Create link elements
         const linkElements = linkGroup.selectAll('.network-edge')
@@ -377,7 +390,6 @@ document.addEventListener('DOMContentLoaded', () => {
             .attr('class', d => {
                 let classes = 'network-node';
                 if (d.isUser) classes += ' user-node';
-                if (d.isStrategic) classes += ' strategic-node';
                 return classes;
             });
 
@@ -393,16 +405,26 @@ document.addEventListener('DOMContentLoaded', () => {
         state.simulation.on("tick", () => {
             const containerNode = d3.select('#connection-chart').node();
             if (!containerNode) return;
-            const { width, height } = containerNode.getBoundingClientRect();
 
-            linkElements
-                .attr('x1', d => d.source.x)
-                .attr('y1', d => d.source.y)
-                .attr('x2', d => d.target.x)
-                .attr('y2', d => d.target.y);
+            // Hard position constraints - clamp nodes to viewport boundaries
+            const avatarRadius = 50; // Effective avatar radius for safety margin
+            state.nodePositions.forEach(node => {
+                node.x = Math.max(avatarRadius, Math.min(width - avatarRadius, node.x));
+                node.y = Math.max(avatarRadius, Math.min(height - avatarRadius, node.y));
+            });
 
-            nodeElements
-                .attr('transform', d => `translate(${d.x}, ${d.y})`);
+            if (state.linkElements) {
+                state.linkElements
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+            }
+
+            if (state.nodeElements) {
+                state.nodeElements
+                    .attr('transform', d => `translate(${d.x}, ${d.y})`);
+            }
         });
 
         // Store elements for updates
@@ -429,28 +451,35 @@ document.addEventListener('DOMContentLoaded', () => {
         state.simulation.nodes(state.nodePositions);
         state.simulation.force("link").links(newLinks).distance(d => d.distance).strength(d => d.weight * 0.1); // Weaker links
         
-        // Restart simulation much more aggressively for dramatic changes
-        state.simulation.alpha(1.5).restart();
+        // Restart simulation gently for smooth transitions
+        state.simulation.alpha(0.1).restart();
         
-        // Immediately boost polarization forces during updates
-        state.simulation.force('opinion_cluster').strength(3.0); // Even stronger during updates
+        // Hard position constraints after simulation restart
+        const container = d3.select('#connection-chart');
+        const width = container.node().getBoundingClientRect().width;
+        const height = container.node().getBoundingClientRect().height;
+        const avatarRadius = 50; // Effective avatar radius for safety margin
+        state.nodePositions.forEach(node => {
+            node.x = Math.max(avatarRadius, Math.min(width - avatarRadius, node.x));
+            node.y = Math.max(avatarRadius, Math.min(height - avatarRadius, node.y));
+        });
+        
+        // Slightly boost polarization forces during updates
+        state.simulation.force('opinion_cluster').strength(2.8); // Slightly stronger during updates
         
         setTimeout(() => {
             if (state.simulation) {
-                state.simulation.force('opinion_cluster').strength(2.5); // Back to strong default
-                state.simulation.alpha(1.0).restart();
+                state.simulation.force('opinion_cluster').strength(2.5); // Back to default
             }
-        }, 200);
+        }, 8000);
         
         // Update visual elements
         if (state.linkElements && state.nodeElements) {
-            // Update links
-            const linkUpdate = state.linkElements.data(newLinks);
-            linkUpdate.exit().remove();
-            const linkEnter = linkUpdate.enter().append('line')
-                .attr('class', 'network-edge')
-                .attr('stroke', '#FFFFFF');
-            state.linkElements = linkEnter.merge(linkUpdate)
+            // Update links - since the graph structure is static, we just update properties
+            state.linkElements.data(newLinks)
+                .transition()
+                .duration(1500)
+                .ease(d3.easeCubicInOut)
                 .attr('stroke-width', d => d.thickness)
                 .attr('stroke-opacity', d => d.opacity);
             
@@ -461,7 +490,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     // Update shirt color based on new opinion
                     avatar.select('.avatar-body')
                         .transition()
-                        .duration(500)
+                        .duration(1200)
+                        .ease(d3.easeBackOut)
                         .attr('fill', getShirtColorFromOpinion(d.opinion));
                     
                     // Update avatar expression based on opinion
@@ -487,7 +517,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     avatar.select('.mouth')
                         .transition()
-                        .duration(300)
+                        .duration(800)
+                        .ease(d3.easeCubicInOut)
                         .attr('d', mouthPath);
                 }
             });
@@ -562,13 +593,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Fade in
         bubbleGroup.transition()
-            .duration(300)
+            .duration(600)
+            .ease(d3.easeCubicInOut)
             .style('opacity', 1);
 
         // Fade out and remove
         bubbleGroup.transition()
             .delay(5000)
             .duration(1000)
+            .ease(d3.easeCubicInOut)
             .style('opacity', 0)
             .remove();
     }
@@ -625,12 +658,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function resetSimulation() {
-        const newStrategicChoice = state.includeStrategicAgents;
         try {
             const response = await fetch('/api/reset_simulation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ include_strategic_agents: newStrategicChoice }),
             });
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({detail: "Reset failed"}));

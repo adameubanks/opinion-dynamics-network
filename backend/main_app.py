@@ -26,16 +26,15 @@ SIM_PARAMS = {
     "n_agents": 21,
     "n_opinions": 1,
     "min_prob": 0.05,
-    "alpha_filter": 0.1,
+    "alpha_filter": 0.7,
+    "min_connections_per_agent": 2,
+    "connection_probability": 0.1,
     "user_agents_initial_opinion": [[0.5]],
-    "user_alpha": 0.5,
-    "strategic_agents_initial_opinion_targets": [[0.5]],
-    "strategic_theta": 0.5,
+    "user_alpha": 0.7,
     "theta": 7,
     "time_between_posts": 4.0,
     "posts_per_cycle": 1,
     "init_updates": 0,
-    "include_strategic_agents": False,
     "loop_sleep_time": 5.0,
     "use_pregenerated_posts": True
 }
@@ -124,8 +123,6 @@ def initialize_network_and_poster():
         alpha_filter=SIM_PARAMS["alpha_filter"],
         user_agents=SIM_PARAMS["user_agents_initial_opinion"] if SIM_PARAMS["n_agents"] > 0 else [],
         user_alpha=SIM_PARAMS["user_alpha"],
-        strategic_agents=SIM_PARAMS.get("strategic_agents_initial_opinion_targets", []),
-        strategic_theta=SIM_PARAMS["strategic_theta"],
         theta=SIM_PARAMS["theta"]
     )
     SIM_STATE["poster_instance"] = Poster(API_KEY, OPINION_AXES)
@@ -149,35 +146,22 @@ app = FastAPI(lifespan=lifespan)
 
 def _calculate_color_scaling_params(X_opinions: np.ndarray, sim_config: dict) -> Dict[str, float]:
     n_agents = sim_config.get("n_agents", 0)
-
-    # All agents except User (index 0) are considered for scaling
-    normal_agent_indices = list(range(1, n_agents))
-
-    x_min, x_max = 0.0, 1.0
-
-    if normal_agent_indices and X_opinions.ndim == 2 and X_opinions.shape[0] == n_agents and X_opinions.shape[1] >= 1:
-        valid_normal_indices = [idx for idx in normal_agent_indices if idx < X_opinions.shape[0]]
-        if not valid_normal_indices:
-             return {"x_min": x_min, "x_max": x_max}
-
-        normal_opinions_x = X_opinions[valid_normal_indices, 0]
-
-        if normal_opinions_x.size > 0:
-            x_min_val, x_max_val = float(normal_opinions_x.min()), float(normal_opinions_x.max())
-            x_min = x_min_val if x_min_val < x_max_val else (x_min_val - 0.01 if x_min_val > 0 else 0.0)
-            x_max = x_max_val if x_min_val < x_max_val else (x_max_val + 0.01 if x_max_val < 1 else 1.0)
-            if x_min == x_max:
-                x_min, x_max = 0.0, 1.0
-                
+    
+    if n_agents <= 1 or X_opinions is None or X_opinions.size == 0:
+        return {"x_min": 0.0, "x_max": 1.0}
+    
+    # Skip user agent (index 0), use all other agents
+    normal_opinions_x = X_opinions[1:, 0]
+    
+    if normal_opinions_x.size == 0:
+        return {"x_min": 0.0, "x_max": 1.0}
+    
+    x_min = float(normal_opinions_x.min())
+    x_max = float(normal_opinions_x.max())
+    
     return {"x_min": x_min, "x_max": x_max}
 
-def _create_simulation_state_payload(current_network_instance: Network, 
-                                     sim_params_config: dict, 
-                                     current_bot_names_list: List[str], 
-                                     opinion_axes_list: List[Dict]) -> Dict:
-    if current_network_instance is None:
-        raise ValueError("Network instance is not initialized.")
-
+def _create_simulation_state_payload(current_network_instance: Network, sim_params_config: dict, current_bot_names_list: List[str], opinion_axes_list: List[Dict]) -> Dict:
     X, A, _, edge_weights = current_network_instance.get_state()
     color_params = _calculate_color_scaling_params(X, sim_params_config)
     
@@ -189,16 +173,12 @@ def _create_simulation_state_payload(current_network_instance: Network,
         "opinion_axes": opinion_axes_list,
         "n_agents": sim_params_config.get("n_agents", 0),
         "user_agent_index": 0,
-        "strategic_agent_count": 0,
-        "include_strategic_agents": False,
         "color_scaling_params": color_params
     }
 
 class UserMessage(BaseModel):
     message: str
 
-class ResetConfig(BaseModel):
-    include_strategic_agents: bool | None = None
 
 class SimulationControl(BaseModel):
     action: str
@@ -246,10 +226,7 @@ async def send_user_message(user_message: UserMessage):
         SIM_STATE["network_instance"].add_user_opinion(np.array(user_opinion_vector), user_index=user_agent_index)
     else:
         current_X_state, _, _ = SIM_STATE["network_instance"].get_state()
-        if current_X_state.shape[0] > user_agent_index:
-             SIM_STATE["network_instance"].add_user_opinion(np.array(current_X_state[user_agent_index]), user_index=user_agent_index)
-        else:
-             SIM_STATE["network_instance"].add_user_opinion(np.array(SIM_PARAMS["user_agents_initial_opinion"][0]), user_index=user_agent_index)
+        SIM_STATE["network_instance"].add_user_opinion(np.array(current_X_state[user_agent_index]), user_index=user_agent_index)
 
     if SIM_STATE["network_instance"] and user_opinion_vector:
         SIM_STATE["network_instance"].update_network(include_user_opinions=True)
@@ -267,7 +244,7 @@ async def send_user_message(user_message: UserMessage):
     return {"status": "message_processed", "analyzed_opinion": user_opinion_vector}
 
 @app.post("/api/reset_simulation")
-async def reset_simulation_api(config: ResetConfig):
+async def reset_simulation_api():
     if SIM_STATE["simulation_running"]:
         await control_simulation(SimulationControl(action="stop"))
     
@@ -362,28 +339,12 @@ async def simulation_loop_task():
                 if eligible_posters:
                     posting_bots_indices = random.sample(eligible_posters, min(num_bots_to_post, len(eligible_posters)))
                 
-                if SIM_PARAMS.get("include_strategic_agents"):
-                    num_strategic = len(SIM_PARAMS.get("strategic_agents_initial_opinion_targets",[]))
-                    if num_strategic > 0:
-                        strategic_indices = list(range(SIM_PARAMS["n_agents"] - num_strategic, SIM_PARAMS["n_agents"]))
-                        if not any(idx in posting_bots_indices for idx in strategic_indices) and strategic_indices:
-                            chosen_strategic = random.choice(strategic_indices)
-                            if len(posting_bots_indices) < num_bots_to_post:
-                                if chosen_strategic not in posting_bots_indices:
-                                    posting_bots_indices.append(chosen_strategic)
-                            elif posting_bots_indices:
-                                non_strategic_in_list = [idx for idx in posting_bots_indices if idx not in strategic_indices]
-                                if non_strategic_in_list:
-                                    posting_bots_indices.remove(random.choice(non_strategic_in_list))
-                                    if chosen_strategic not in posting_bots_indices:
-                                        posting_bots_indices.append(chosen_strategic)
-                
                 random.shuffle(posting_bots_indices)
 
                 for agent_idx in posting_bots_indices:
                     if not SIM_STATE["network_instance"] or not SIM_STATE["simulation_running"]: break 
                     agent_opinion = X_state[agent_idx]
-                    agent_name = SIM_STATE["current_bot_names"][agent_idx] if agent_idx < len(SIM_STATE["current_bot_names"]) else f"Agent {agent_idx}"
+                    agent_name = SIM_STATE["current_bot_names"][agent_idx]
                     
                     try:
                         post_delay = SIM_PARAMS.get("time_between_posts", 0.1)
@@ -395,15 +356,18 @@ async def simulation_loop_task():
                             post_content = post_data["text"]
                             analyzed_opinion = post_data["sentiment"]
                             if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
-                                SIM_STATE["network_instance"].update_network(include_user_opinions=False)
+                                SIM_STATE["network_instance"].set_agent_opinion(agent_idx, np.array(analyzed_opinion))
                         else:
                             post_content = await asyncio.to_thread(SIM_STATE["poster_instance"].generate_post, agent_name, agent_opinion)
                             try:
                                 analyzed_opinion = await asyncio.to_thread(SIM_STATE["poster_instance"].analyze_post, post_content)
                                 if analyzed_opinion and len(analyzed_opinion) == SIM_PARAMS["n_opinions"]:
-                                    SIM_STATE["network_instance"].update_network(include_user_opinions=SIM_STATE["user_has_posted"])
+                                    SIM_STATE["network_instance"].set_agent_opinion(agent_idx, np.array(analyzed_opinion))
                             except Exception:
                                 analyzed_opinion = agent_opinion
+                        
+                        if SIM_STATE["network_instance"]:
+                            SIM_STATE["network_instance"].update_network(include_user_opinions=SIM_STATE["user_has_posted"])
                         
                         X_updated, A_updated, _, edge_weights_updated = SIM_STATE["network_instance"].get_state()
                         current_color_params = _calculate_color_scaling_params(X_updated, SIM_PARAMS)

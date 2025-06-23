@@ -179,10 +179,6 @@ body {
     filter: drop-shadow(0 0 8px #B8860B);
 }
 
-.strategic-node {
-    filter: drop-shadow(0 0 6px #696969);
-}
-
 .avatar-head {
     transition: all 0.3s ease;
 }
