@@ -264,21 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return avatarGroup;
     }
 
-    function createBoundaryForce(width, height, margin = 60) {
-        return function(alpha) {
-            for (let i = 0, n = this.nodes.length, node, x, y; i < n; ++i) {
-                node = this.nodes[i];
-                x = node.x;
-                y = node.y;
-                
-                // Apply boundary forces
-                if (x < margin) node.vx += (margin - x) * alpha * 0.3;
-                if (x > width - margin) node.vx += (width - margin - x) * alpha * 0.3;
-                if (y < margin) node.vy += (margin - y) * alpha * 0.3;
-                if (y > height - margin) node.vy += (height - margin - y) * alpha * 0.3;
-            }
-        };
-    }
+
 
     function createD3Nodes(opinions, agentNames, height) {
         const container = d3.select('#connection-chart');
@@ -369,8 +355,7 @@ document.addEventListener('DOMContentLoaded', () => {
             .force("collision", d3.forceCollide().radius(38)) // Smaller collision radius
             .force("opinion_cluster", d3.forceX(d => width * 0.05 + (width * 0.9 * d.opinion)).strength(2.5)) // Much stronger
             .force("influence", d3.forceX().strength(0))
-            .force("y_centering", d3.forceY(height / 2).strength(0.1)) // Gentle vertical centering
-            .force("boundary", createBoundaryForce(width, height, 60)); // Keep nodes in viewport
+            .force("y_centering", d3.forceY(height / 2).strength(0.1)); // Gentle vertical centering
 
         // Create link elements
         const linkElements = linkGroup.selectAll('.network-edge')
@@ -406,8 +391,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const containerNode = d3.select('#connection-chart').node();
             if (!containerNode) return;
 
-            // Hard position constraints - clamp nodes to viewport boundaries
-            const avatarRadius = 50; // Effective avatar radius for safety margin
+            // Hard boundary constraints - keep avatars within canvas
+            const avatarRadius = 50;
             state.nodePositions.forEach(node => {
                 node.x = Math.max(avatarRadius, Math.min(width - avatarRadius, node.x));
                 node.y = Math.max(avatarRadius, Math.min(height - avatarRadius, node.y));
@@ -453,16 +438,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // Restart simulation gently for smooth transitions
         state.simulation.alpha(0.1).restart();
-        
-        // Hard position constraints after simulation restart
-        const container = d3.select('#connection-chart');
-        const width = container.node().getBoundingClientRect().width;
-        const height = container.node().getBoundingClientRect().height;
-        const avatarRadius = 50; // Effective avatar radius for safety margin
-        state.nodePositions.forEach(node => {
-            node.x = Math.max(avatarRadius, Math.min(width - avatarRadius, node.x));
-            node.y = Math.max(avatarRadius, Math.min(height - avatarRadius, node.y));
-        });
         
         // Slightly boost polarization forces during updates
         state.simulation.force('opinion_cluster').strength(2.8); // Slightly stronger during updates
