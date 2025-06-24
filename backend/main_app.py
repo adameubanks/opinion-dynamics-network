@@ -30,7 +30,7 @@ SIM_PARAMS = {
     "min_connections_per_agent": 2,
     "connection_probability": 0.1,
     "user_agents_initial_opinion": [[0.5]],
-    "user_alpha": 0.7,
+    "user_alpha": 0.8,
     "theta": 7,
     "time_between_posts": 4.0,
     "posts_per_cycle": 1,

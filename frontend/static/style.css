@@ -38,8 +38,8 @@ body {
 }
 
 .sidebar {
-    flex-basis: 250px; /* Fixed width */
-    min-width: 200px;
+    flex-basis: 300px; /* Fixed width */
+    min-width: 250px;
     flex-shrink: 0; /* Don't shrink */
     display: flex;
     flex-direction: column;
@@ -47,8 +47,17 @@ body {
     background-color: #1f1f1f;
 }
 
-#visualization-container h1, .sidebar h2 {
+#visualization-container h1 {
     font-size: 2.5em;
+    color: #e0e0e0;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #3a3a3a;
+    text-align: center;
+}
+
+.sidebar h2 {
+    font-size: 1.5em;
     color: #e0e0e0;
     margin-bottom: 10px;
     padding-bottom: 5px;

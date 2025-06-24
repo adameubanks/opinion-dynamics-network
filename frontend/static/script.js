@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
         avatarData: [],
         linkElements: null,
         nodeElements: null,
-        currentEdgeWeights: []
+        currentEdgeWeights: [],
+        statisticsGroup: null
     };
 
     let socket;
@@ -318,8 +319,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // Create groups for links and nodes
         const linkGroup = svg.append('g').attr('class', 'links');
         const nodeGroup = svg.append('g').attr('class', 'nodes');
+        const statisticsGroup = createStatisticsDisplay(svg, width);
+        const axisGroup = createOpinionAxis(svg, width, height);
         
-        return { svg, linkGroup, nodeGroup, width, height };
+        return { svg, linkGroup, nodeGroup, statisticsGroup, axisGroup, width, height };
     }
 
     function initializeD3Network(opinions, adjMatrix, agentNamesArr, opinionAxesInfo, edgeWeights) {
@@ -332,7 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.avatarData = generateAvatarData(state.nAgents);
         
         // Create D3 network elements
-        const { svg, linkGroup, nodeGroup, width, height } = createD3NetworkElements();
+        const { svg, linkGroup, nodeGroup, statisticsGroup, axisGroup, width, height } = createD3NetworkElements();
         
         // Create nodes and links data
         const nodes = createD3Nodes(opinions, agentNamesArr, height);
@@ -416,6 +419,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.linkElements = linkElements;
         state.nodeElements = nodeElements;
         state.nodePositions = nodes;
+        
+        // Update initial statistics display
+        updateStatisticsDisplay(opinions);
     }
 
     function updateD3Network(opinions, adjMatrix, edgeWeights) {
@@ -498,6 +504,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
+        // Update statistics display
+        updateStatisticsDisplay(opinions);
     }
 
     function showSpeechBubble(nodeElement, message) {
@@ -647,6 +656,259 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error(`Reset error: ${error.message}`);
         }
+    }
+
+    function calculateOpinionStatistics(opinions) {
+        if (!opinions || opinions.length === 0) {
+            return { mean: 0.5, std: 0, polarizationLevel: 'Low' };
+        }
+        
+        const values = opinions.map(opinion => opinion[0]);
+        const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
+        
+        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
+        const std = Math.sqrt(variance);
+        
+        let polarizationLevel;
+        if (std < 0.10) {
+            polarizationLevel = 'Low';
+        } else if (std < 0.20) {
+            polarizationLevel = 'Medium';
+        } else {
+            polarizationLevel = 'High';
+        }
+        
+        return { mean, std, polarizationLevel };
+    }
+
+    function createStatisticsDisplay(svg, width) {
+        const statsGroup = svg.append('g')
+            .attr('class', 'statistics-display')
+            .attr('transform', 'translate(15, 15)');
+        
+        // Background box
+        statsGroup.append('rect')
+            .attr('class', 'stats-background')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', 280)
+            .attr('height', 130)
+            .attr('rx', 8)
+            .attr('fill', 'rgba(30, 30, 30, 0.85)')
+            .attr('stroke', '#3a3a3a')
+            .attr('stroke-width', 1);
+        
+        // Consensus text
+        const consensusText = statsGroup.append('text')
+            .attr('class', 'consensus-text')
+            .attr('x', 15)
+            .attr('y', 30)
+            .attr('fill', '#e0e0e0')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '20px');
+        
+        consensusText.append('tspan')
+            .attr('font-weight', 'bold')
+            .text('Consensus: ');
+        
+        consensusText.append('tspan')
+            .attr('class', 'consensus-content')
+            .text('🍍+🍕=🤷');
+        
+        // Mean value text
+        statsGroup.append('text')
+            .attr('class', 'mean-text')
+            .attr('x', 15)
+            .attr('y', 52)
+            .attr('fill', '#b0b0b0')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '16px')
+            .text('Mean: 0.50');
+        
+        // Polarization text
+        const polarizationText = statsGroup.append('text')
+            .attr('class', 'polarization-text')
+            .attr('x', 15)
+            .attr('y', 82)
+            .attr('fill', '#e0e0e0')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '20px');
+        
+        polarizationText.append('tspan')
+            .attr('font-weight', 'bold')
+            .text('Polarization: ');
+        
+        polarizationText.append('tspan')
+            .attr('class', 'polarization-content')
+            .text('Low');
+        
+        // Standard deviation text
+        statsGroup.append('text')
+            .attr('class', 'std-text')
+            .attr('x', 15)
+            .attr('y', 104)
+            .attr('fill', '#b0b0b0')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '16px')
+            .text('Standard Deviation: 0.00');
+        
+        state.statisticsGroup = statsGroup;
+        return statsGroup;
+    }
+
+    function createOpinionAxis(svg, width, height) {
+        // Create gradient definition
+        const defs = svg.append('defs');
+        const gradient = defs.append('linearGradient')
+            .attr('id', 'opinion-gradient')
+            .attr('x1', '0%')
+            .attr('x2', '100%')
+            .attr('y1', '0%')
+            .attr('y2', '0%');
+        
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#FF6B6B');
+        
+        gradient.append('stop')
+            .attr('offset', '50%')
+            .attr('stop-color', '#95A5A6');
+        
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#4ECDC4');
+        
+        // Calculate positioning
+        const axisY = height - 60;
+        const startX = width * 0.05;
+        const endX = width * 0.95;
+        const arrowWidth = 45;
+        const axisHeight = 20;
+        const arrowHeight = 40;
+        
+        // Create axis group
+        const axisGroup = svg.append('g')
+            .attr('class', 'opinion-axis');
+        
+        // Main gradient bar (full width)
+        axisGroup.append('rect')
+            .attr('x', startX)
+            .attr('y', axisY - axisHeight / 2)
+            .attr('width', endX - startX)
+            .attr('height', axisHeight)
+            .attr('rx', 10)
+            .attr('fill', 'url(#opinion-gradient)')
+            .attr('stroke', '#3a3a3a')
+            .attr('stroke-width', 1);
+        
+        // Left arrow (pointing left, overlapping gradient)
+        const leftArrowPoints = [
+            [startX - 15, axisY],
+            [startX + arrowWidth - 15, axisY - arrowHeight / 2],
+            [startX + arrowWidth - 15, axisY + arrowHeight / 2]
+        ];
+        
+        axisGroup.append('polygon')
+            .attr('points', leftArrowPoints.map(d => d.join(',')).join(' '))
+            .attr('fill', '#FF6B6B');
+        
+        // Right arrow (pointing right, overlapping gradient)
+        const rightArrowPoints = [
+            [endX + 15, axisY],
+            [endX - arrowWidth + 15, axisY - arrowHeight / 2],
+            [endX - arrowWidth + 15, axisY + arrowHeight / 2]
+        ];
+        
+        axisGroup.append('polygon')
+            .attr('points', rightArrowPoints.map(d => d.join(',')).join(' '))
+            .attr('fill', '#4ECDC4');
+        
+        // Left label
+        axisGroup.append('text')
+            .attr('x', startX + arrowWidth / 2 - 15)
+            .attr('y', axisY + arrowHeight / 2 + 25)
+            .attr('text-anchor', 'middle')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '18px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#e0e0e0')
+            .text('Anti Pineapple Pizza');
+        
+        // Right label
+        axisGroup.append('text')
+            .attr('x', endX - arrowWidth / 2 + 15)
+            .attr('y', axisY + arrowHeight / 2 + 25)
+            .attr('text-anchor', 'middle')
+            .attr('font-family', 'Arial, sans-serif')
+            .attr('font-size', '18px')
+            .attr('font-weight', 'bold')
+            .attr('fill', '#e0e0e0')
+            .text('Pro Pineapple Pizza');
+        
+        return axisGroup;
+    }
+
+    function updateStatisticsDisplay(opinions) {
+        if (!state.statisticsGroup || !opinions || opinions.length === 0) return;
+        
+        const stats = calculateOpinionStatistics(opinions);
+
+        let emoji;
+        if (stats.mean < 0.1) {
+            emoji = '🍍+🍕=💀';
+        } else if (stats.mean < 0.2) {
+            emoji = '🍍+🍕=🤮';
+        } else if (stats.mean < 0.3) {
+            emoji = '🍍+🍕=😡';
+        } else if (stats.mean < 0.4) {
+            emoji = '🍍+🍕=🙅';
+        } else if (stats.mean < 0.45) {
+            emoji = '🍍+🍕=🤨';
+        } else if (stats.mean < 0.5) {
+            emoji = '🍍+🍕=🤷';
+        } else if (stats.mean < 0.55) {
+            emoji = '🍍+🍕=😐';
+        } else if (stats.mean < 0.6) {
+            emoji = '🍍+🍕=🤔';
+        } else if (stats.mean < 0.7) {
+            emoji = '🍍+🍕=😋';
+        } else if (stats.mean < 0.8) {
+            emoji = '🍍+🍕=😍';
+        } else if (stats.mean < 0.9) {
+            emoji = '🍍+🍕=🔥';
+        } else if (stats.mean <= 1.0) {
+            emoji = '🍍+🍕=👑';
+        }
+
+        
+        const consensusContent = `${emoji}`;
+        const meanText = `Mean: ${stats.mean.toFixed(2)}`;
+        const polarizationContent = `${stats.polarizationLevel}`;
+        const stdText = `Standard Deviation: ${stats.std.toFixed(2)}`;
+        
+        state.statisticsGroup.select('.consensus-content')
+            .transition()
+            .duration(800)
+            .ease(d3.easeCubicInOut)
+            .text(consensusContent);
+        
+        state.statisticsGroup.select('.mean-text')
+            .transition()
+            .duration(800)
+            .ease(d3.easeCubicInOut)
+            .text(meanText);
+        
+        state.statisticsGroup.select('.polarization-content')
+            .transition()
+            .duration(800)
+            .ease(d3.easeCubicInOut)
+            .text(polarizationContent);
+        
+        state.statisticsGroup.select('.std-text')
+            .transition()
+            .duration(800)
+            .ease(d3.easeCubicInOut)
+            .text(stdText);
     }
 
     if (elements.sendButton) {
