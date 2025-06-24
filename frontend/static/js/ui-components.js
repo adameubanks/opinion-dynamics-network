@@ -59,7 +59,7 @@ export function updateStatisticsDisplay(statsGroup, opinions) {
     if (!statsGroup || !opinions || opinions.length === 0) return;
     
     const stats = calculateOpinionStatistics(opinions);
-    const emojiIndex = Math.min(10, Math.floor(stats.mean * 10));
+    const emojiIndex = Math.min(20, Math.floor(stats.mean * 20));
     const emoji = OPINION_THRESHOLDS[emojiIndex];
     
     const updates = [
