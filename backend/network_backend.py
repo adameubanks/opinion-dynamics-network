@@ -50,14 +50,26 @@ def calculate_edge_weights(X):
     
     return weights
 
-def initialize_random_A(n_agents, p=0.1, min_connections=2):
+def initialize_random_A(n_agents, p, min_connections, user_connections):
     """Initializes a random, symmetric adjacency matrix with guaranteed minimum connections."""
     A = (np.random.rand(n_agents, n_agents) < p).astype(int)
     A = np.maximum(A, A.T)
     np.fill_diagonal(A, 0)
+
+    # If user_connections is specified, create a hub for the user (agent 0)
+    if user_connections is not None and n_agents > 1:
+        user_agent_index = 0
+        A[user_agent_index, :] = 0
+        A[:, user_agent_index] = 0
+        other_agents = np.arange(1, n_agents)
+        if len(other_agents) > 0:
+            assert user_connections <= len(other_agents), "user_connections cannot be greater than the number of available agents."
+            hub_connections = np.random.choice(other_agents, user_connections, replace=False)
+            A[user_agent_index, hub_connections] = 1
+            A[hub_connections, user_agent_index] = 1
     
     # Ensure each agent has at least min_connections
-    for i in range(n_agents):
+    for i in range(1, n_agents):
         current_connections = np.sum(A[i])
         if current_connections < min_connections:
             available_agents = np.where(A[i] == 0)[0]
@@ -71,26 +83,15 @@ def initialize_random_A(n_agents, p=0.1, min_connections=2):
     return A
 
 class Network:
-    def __init__(self, n_agents=50, n_opinions=3, X=None, A=None, theta=7, min_prob=0.01, alpha_filter=0.5,
-                 user_agents=[], user_alpha=0.5):
-        # Basic assertions
-        assert n_agents > 0 and isinstance(n_agents, (int, np.integer))
-        assert n_opinions > 0 and isinstance(n_opinions, (int, np.integer))
-        assert theta >= 0
-        assert 0 <= min_prob <= 1
-        assert 0 < alpha_filter <= 1
-
+    def __init__(self, n_agents, X, alpha_filter, user_agents, user_alpha, user_connections, min_connections, A=None):
         self.n_agents = n_agents
-        self.n_opinions = n_opinions
-        self.theta = theta
-        self.min_prob = min_prob
         self.alpha_filter = alpha_filter
         self.time_step = 0
 
         if X is None:
-            self.X = np.random.random((n_agents, n_opinions))
+            self.X = np.random.random((n_agents, 1))
         else:
-            assert X.shape == (n_agents, n_opinions)
+            assert X.shape == (n_agents, 1)
             self.X = X.copy()
 
         # Ensure there is enough room for user agents.
@@ -103,12 +104,12 @@ class Network:
             if self.user_agents[i] is None:
                 self.user_agents[i] = self.X[i]
             else:
-                assert len(self.user_agents[i]) == n_opinions
+                assert len(self.user_agents[i]) == 1
                 self.X[i] = self.user_agents[i]
         self.user_agents = np.array(self.user_agents)
 
         if A is None:
-            self.A = initialize_random_A(self.n_agents, p=0.1, min_connections=2)
+            self.A = initialize_random_A(self.n_agents, p=0.1, min_connections=min_connections, user_connections=user_connections)
         else:
             assert A.shape == (n_agents, n_agents)
             self.A = A.copy()
@@ -124,8 +125,8 @@ class Network:
             raise ValueError(f"Agent index {agent_index} is out of bounds.")
         if not isinstance(new_opinion, np.ndarray):
             new_opinion = np.array(new_opinion)
-        if new_opinion.shape != (self.n_opinions,):
-            raise ValueError(f"Opinion vector shape mismatch. Expected {(self.n_opinions,)}, got {new_opinion.shape}.")
+        if new_opinion.shape != (1,):
+            raise ValueError(f"Opinion vector shape mismatch. Expected {(1,)}, got {new_opinion.shape}.")
         
         self.X[agent_index] = new_opinion
 
