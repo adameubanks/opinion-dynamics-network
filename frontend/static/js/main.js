@@ -41,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         } else if (message.type === 'new_post') {
+            console.log(`Model Result: ${message.data.sender_name} | Opinion: [${message.data.opinion_vector}] | Post: "${message.data.message}" | Analyzed: [${message.data.analyzed_opinion || 'N/A'}]`);
             addFeedMessage(message.data);
         } else if (message.type === 'initial_state_full' || message.type === 'reset_complete') {
             initializeSimulationState(message.data, state);
@@ -77,15 +78,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleSendMessage() {
         const messageText = elements.messageInput.value.trim();
         if (messageText && socket && socket.readyState === WebSocket.OPEN) {
-            const userMessage = {
-                sender_name: state.agentNames[state.userAgentIndex] || "User",
-                sender_index: state.userAgentIndex,
-                message: messageText,
-                opinion_vector: state.currentOpinions[state.userAgentIndex] || [0.5]
-            };
-            addFeedMessage(userMessage);
             elements.messageInput.value = '';
-            
+
             try {
                 await sendMessage(messageText);
             } catch (error) {

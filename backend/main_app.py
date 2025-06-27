@@ -30,7 +30,7 @@ SIM_PARAMS = {
     "min_connections_per_agent": 2,
     "connection_probability": 0.1,
     "user_agents_initial_opinion": [[0.5]],
-    "user_alpha": 0.8,
+    "user_alpha": 0.9,
     "theta": 7,
     "time_between_posts": 4.0,
     "posts_per_cycle": 1,
@@ -42,8 +42,8 @@ SIM_PARAMS = {
 OPINION_AXES = [
     {
         'name': 'Pineapple on Pizza',
-        'pro': 'Pineapple on pizza is the best possible pizza topping',
-        'con': 'Pineapple on pizza is the worst possible pizza topping'
+        'pro': 'Pineapple is a great topping that enhances the flavor of a pizza.',
+        'con': 'Pineapple does not belong on pizza; it ruins the flavor.'
     }
 ]
 
@@ -209,7 +209,8 @@ async def send_user_message(user_message: UserMessage):
     message_text = user_message.message.strip()
     if not message_text:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
-
+    SIM_STATE["poster_instance"].add_external_post_to_history("User", message_text)
+    
     user_agent_index = 0
     SIM_STATE["user_has_posted"] = True
 
@@ -238,6 +239,17 @@ async def send_user_message(user_message: UserMessage):
             "adjacency_matrix": A_updated.tolist(),
             "edge_weights": edge_weights_updated.tolist(),
             "color_scaling_params": current_color_params
+        })
+
+        await manager.broadcast_json({
+            "type": "new_post",
+            "data": {
+                "sender_name": SIM_STATE["current_bot_names"][user_agent_index].tolist() if isinstance(SIM_STATE["current_bot_names"], np.ndarray) else SIM_STATE["current_bot_names"][user_agent_index],
+                "sender_index": user_agent_index,
+                "message": message_text,
+                "opinion_vector": X_updated[user_agent_index].tolist(),
+                "analyzed_opinion": user_opinion_vector if isinstance(user_opinion_vector, list) else X_updated[user_agent_index].tolist()
+            }
         })
 
     SIM_STATE["user_posted_this_cycle_flag"] = True
@@ -385,7 +397,8 @@ async def simulation_loop_task():
                                 "sender_name": agent_name,
                                 "sender_index": agent_idx,
                                 "message": post_content,
-                                "opinion_vector": agent_opinion.tolist()
+                                "opinion_vector": agent_opinion.tolist(),
+                                "analyzed_opinion": analyzed_opinion if isinstance(analyzed_opinion, list) else agent_opinion.tolist()
                             }
                         })
                         last_post_time_cycle = time.time()

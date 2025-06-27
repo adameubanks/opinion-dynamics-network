@@ -6,7 +6,7 @@ from typing import List, Dict
 import numpy as np
 
 class Poster:
-    def __init__(self, api_key, opinion_axes, max_history=8):
+    def __init__(self, api_key, opinion_axes, max_history=5):
         self.client = OpenAI(api_key=api_key)
         self.opinion_axes = opinion_axes
         self.chat_history = []
@@ -28,13 +28,21 @@ class Poster:
             return None
 
     def analyze_post(self, post, max_retries=5):
-        system_prompt = "You analyze social media posts and output opinion vectors. "
+        system_prompt = "You analyze social media posts and output opinion vectors with high accuracy. "
+        system_prompt += "Focus on the ACTUAL OPINION EXPRESSED, not just keywords. Consider context, tone, and intent.\n"
         system_prompt += "For each topic, rate the opinion on a scale of 0.0 to 1.0 where:\n"
         for i, axis in enumerate(self.opinion_axes):
             system_prompt += f"\nTopic {i+1}: {axis['name']}\n"
             system_prompt += f"0.0 = Strongly agrees with: {axis['con']}\n"
             system_prompt += f"1.0 = Strongly agrees with: {axis['pro']}\n"
             system_prompt += "0.5 = Neutral or topic not addressed\n"
+        system_prompt += "\nEXAMPLES:\n"
+        system_prompt += "'I love pineapple on pizza! It's a fantastic combination.' = [1.0] (strongest positive)\n"
+        system_prompt += "'I'm a fan of pineapple on pizza, it's pretty good.' = [0.8] (clearly positive)\n"
+        system_prompt += "'I guess pineapple on pizza is fine.' = [0.6] (mildly positive)\n"
+        system_prompt += "'I don't really like pineapple on pizza.' = [0.4] (mildly negative)\n"
+        system_prompt += "'I really don't like pineapple on pizza.' = [0.2] (clearly negative)\n"
+        system_prompt += "'Absolutely not. Pineapple on pizza is a hard pass for me.' = [0.0] (strongest negative)\n"
         system_prompt += "\nOutput ONLY a Python list of floats, e.g. [0.8, 0.2]"
         
         for attempt in range(max_retries):
@@ -72,19 +80,20 @@ class Poster:
         system_prompt += "CRITICAL RULES:\n"
         system_prompt += "1. MUST be under 100 characters including spaces. Keep it short.\n"
         system_prompt += "2. Express your view in a single, natural statement - DO NOT number or separate points\n"
-        system_prompt += "3. Use stronger language for values near 0 or 1, moderate for values near 0.5\n"
-        system_prompt += "4. Sound like a real social media user\n"
-        system_prompt += "5. If you don't have an extreme position, avoid stereotyping. Leverage the precision opinion value.\n"
+        system_prompt += "3. Your language should reflect the extremity of your opinion. Values near 0.0 or 1.0 should be strong, while values closer to 0.5 should be more moderate or nuanced.\n"
+        system_prompt += "4. Sound like a real social media user - be conversational and authentic\n"
+        system_prompt += "5. If responding to others, acknowledge their points while sharing your perspective\n"
+        system_prompt += "6. Do NOT prefix your response with your name - just write the post content\n"
         if self.chat_history:
-            system_prompt += f"6. Make sure your response is integrated into the conversation, often using the names of other users. Do not respond yourself, {name}\n"
-            system_prompt += "\nCurrent conversation:\n"
+            system_prompt += "7. Reference recent conversation naturally, using other users' names when relevant\n"
+            system_prompt += "\nRecent conversation:\n"
             for entry in self.chat_history[-self.max_history:]:
                 system_prompt += f"\n{entry['author']}: {entry['post']}"
         
-        system_prompt += "\n\nExpress views on this topic:\n"
+        system_prompt += f"\n\nYour name is {name}. Express views on this topic:\n"
         system_prompt += f"\nTopic: {axis['name']}\n"
-        system_prompt += f"View: {opinion_on_topic:.2f} on spectrum:\n"
-        system_prompt += f"{axis['con']} (0.0) ←→ {axis['pro']} (1.0)\n"
+        system_prompt += f"Your opinion: {opinion_on_topic:.2f} on spectrum:\n"
+        system_prompt += f"Disagree (0.0) ←→ Agree (1.0)\n"
 
         for attempt in range(max_retries):
             try:
