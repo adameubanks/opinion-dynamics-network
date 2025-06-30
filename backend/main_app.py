@@ -40,17 +40,10 @@ OPINION_AXES = [
     }
 ]
 
-BOT_NAMES = [
-    "User",
-    "Marshall", "Brigham", "Nephi", "Khalid", "Amari", "Joon-ho", "Rohan", "Mateo", "Diego", "Hector",
-    "Lily", "Eliza", "Agnes", "Aaliyah", "Yasmine", "Yuki", "Leilani", "Carmen", "Mei", "Priya"
-]
-
 SIM_STATE = {
     "network_instance": None,
     "opinion_analyzer_instance": None,
     "simulation_task": None,
-    "current_bot_names": np.array(BOT_NAMES[:SIM_PARAMS["n_agents"]]),
     "user_posted_this_cycle_flag": False,
     "simulation_running": False,
     "user_has_posted": False
@@ -74,28 +67,7 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-def setup_simulation_parameters():
-    num_total_agents = SIM_PARAMS["n_agents"]
-    
-    active_bot_names = BOT_NAMES[:num_total_agents]
-
-    final_bot_names = [""] * num_total_agents
-    if num_total_agents > 0:
-        final_bot_names[0] = "User"
-        names_to_fill = [name for name in active_bot_names if name != "User"]
-        
-        fill_idx = 1
-        for name in names_to_fill:
-            if fill_idx < num_total_agents:
-                final_bot_names[fill_idx] = name
-                fill_idx += 1
-            else:
-                break
-        
-        for i in range(fill_idx, num_total_agents):
-            final_bot_names[i] = f"Agent {i}"
-    
-    SIM_STATE["current_bot_names"] = np.array(final_bot_names)
+def setup_simulation_parameters():    
     SIM_PARAMS["user_agents_initial_opinion"] = [[0.5]]
 
 def initialize_network_and_analyzer():
@@ -149,7 +121,7 @@ def _calculate_color_scaling_params(X_opinions: np.ndarray, sim_config: dict) ->
     
     return {"x_min": x_min, "x_max": x_max}
 
-def _create_simulation_state_payload(current_network_instance: Network, sim_params_config: dict, current_bot_names_list: List[str], opinion_axes_list: List[Dict]) -> Dict:
+def _create_simulation_state_payload(current_network_instance: Network, sim_params_config: dict, opinion_axes_list: List[Dict]) -> Dict:
     X, A, _, edge_weights = current_network_instance.get_state()
     color_params = _calculate_color_scaling_params(X, sim_params_config)
     
@@ -157,7 +129,6 @@ def _create_simulation_state_payload(current_network_instance: Network, sim_para
         "opinions": X.tolist() if X is not None else [],
         "adjacency_matrix": A.tolist() if A is not None else [],
         "edge_weights": edge_weights.tolist() if edge_weights is not None else [],
-        "agent_names": current_bot_names_list,
         "opinion_axes": opinion_axes_list,
         "n_agents": sim_params_config.get("n_agents", 0),
         "user_agent_index": 0,
@@ -185,7 +156,6 @@ async def get_initial_state_api():
         payload = _create_simulation_state_payload(
             SIM_STATE["network_instance"], 
             SIM_PARAMS, 
-            SIM_STATE["current_bot_names"].tolist() if isinstance(SIM_STATE["current_bot_names"], np.ndarray) else list(SIM_STATE["current_bot_names"]), 
             OPINION_AXES
         )
         return payload
@@ -234,7 +204,6 @@ async def send_user_message(user_message: UserMessage):
         await manager.broadcast_json({
             "type": "new_post",
             "data": {
-                "sender_name": SIM_STATE["current_bot_names"][user_agent_index].tolist() if isinstance(SIM_STATE["current_bot_names"], np.ndarray) else SIM_STATE["current_bot_names"][user_agent_index],
                 "sender_index": user_agent_index,
                 "message": message_text,
                 "opinion_vector": X_updated[user_agent_index].tolist(),
@@ -258,7 +227,6 @@ async def reset_simulation_api():
             full_state_payload = _create_simulation_state_payload(
                 SIM_STATE["network_instance"], 
                 SIM_PARAMS, 
-                SIM_STATE["current_bot_names"].tolist() if isinstance(SIM_STATE["current_bot_names"], np.ndarray) else list(SIM_STATE["current_bot_names"]), 
                 OPINION_AXES
             )
             await manager.broadcast_json({
@@ -346,7 +314,6 @@ async def simulation_loop_task():
                 for agent_idx in posting_bots_indices:
                     if not SIM_STATE["network_instance"] or not SIM_STATE["simulation_running"]: break 
                     agent_opinion = X_state[agent_idx]
-                    agent_name = SIM_STATE["current_bot_names"][agent_idx]
                     
                     try:                        
                         post_data = get_post_for_opinion(agent_opinion[0])
@@ -371,18 +338,16 @@ async def simulation_loop_task():
                         await manager.broadcast_json({
                             "type": "new_post",
                             "data": {
-                                "sender_name": agent_name,
                                 "sender_index": agent_idx,
                                 "message": post_content,
                                 "opinion_vector": agent_opinion.tolist(),
                                 "analyzed_opinion": analyzed_opinion if isinstance(analyzed_opinion, list) else agent_opinion.tolist()
                             }
                         })
-                        last_post_time_cycle = time.time()
                     except Exception as e:
                         await manager.broadcast_json({
                             "type": "system_message",
-                            "data": {"message": f"System: Error with {agent_name}'s post. {e}"}
+                            "data": {"message": f"System: Error with post. {e}"}
                         })
 
             if SIM_STATE["network_instance"] and SIM_STATE["simulation_running"]:
