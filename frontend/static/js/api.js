@@ -77,4 +77,22 @@ export async function toggleSimulation(isRunning) {
         console.error("Network error controlling simulation.");
         throw error;
     }
+}
+
+export async function updateSimulationSpeed(speed) {
+    try {
+        const response = await fetch('/api/update_speed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ loop_sleep_time: speed }),
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({detail: "Update speed failed"}));
+            throw new Error(`Error updating speed: ${errorData.detail}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("Network error updating speed.", error);
+        throw error;
+    }
 } 

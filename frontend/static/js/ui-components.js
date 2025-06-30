@@ -1,4 +1,5 @@
-import { calculateOpinionStatistics, OPINION_THRESHOLDS } from './utils.js';
+import { calculateOpinionStatistics, getEmojiFromOpinion } from './utils.js';
+import { updateSimulationSpeed } from './api.js';
 
 export function createStatisticsDisplay(svg, width) {
     const statsGroup = svg.append('g')
@@ -21,7 +22,7 @@ export function createStatisticsDisplay(svg, width) {
     const textElements = [
         { class: 'consensus-text', x: 15, y: 30, fontSize: '20px', content: [
             { text: 'Consensus: ', fontWeight: 'bold' },
-            { text: '🍍+🍕=🤷', class: 'consensus-content' }
+            { text: getEmojiFromOpinion(0.5), class: 'consensus-content' }
         ]},
         { class: 'mean-text', x: 15, y: 52, fontSize: '16px', fill: '#b0b0b0', text: 'Mean: 0.50' },
         { class: 'polarization-text', x: 15, y: 82, fontSize: '20px', content: [
@@ -59,9 +60,8 @@ export function updateStatisticsDisplay(statsGroup, opinions) {
     if (!statsGroup || !opinions || opinions.length === 0) return;
     
     const stats = calculateOpinionStatistics(opinions);
-    const emojiIndex = Math.min(20, Math.floor(stats.mean * 20));
-    const emoji = OPINION_THRESHOLDS[emojiIndex];
-    
+    const emoji = getEmojiFromOpinion(stats.mean.toFixed(2));
+    console.log(stats.mean.toFixed(2), emoji);
     const updates = [
         { selector: '.consensus-content', text: emoji },
         { selector: '.mean-text', text: `Mean: ${stats.mean.toFixed(2)}` },
@@ -186,4 +186,15 @@ export function showSpeechBubble(nodeElement, message) {
     // Fade in and out
     bubbleGroup.transition().duration(600).ease(d3.easeCubicInOut).style('opacity', 1);
     bubbleGroup.transition().delay(5000).duration(1000).ease(d3.easeCubicInOut).style('opacity', 0).remove();
+}
+
+export function setupSpeedSlider() {
+    const speedSlider = document.getElementById('speed-slider');
+
+    if (speedSlider) {
+        speedSlider.addEventListener('input', (event) => {
+            const newSpeed = parseFloat(event.target.value);
+            updateSimulationSpeed(newSpeed);
+        });
+    }
 } 

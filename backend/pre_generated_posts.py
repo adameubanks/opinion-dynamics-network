@@ -72,7 +72,7 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
     ],
     (0.9, 1.0): [
         {"text": "Hawaiian pizza is celestial-tier cuisine.", "sentiment": [0.91]},
-        {"text": "If you bring pineapple pizza to ward activity, I'm marrying you.", "sentiment": [0.99]},
+        {"text": "If you bring pineapple pizza to a ward activity, I'm marrying you.", "sentiment": [0.99]},
         {"text": "Can't trust anyone who doesn't like pineapple pizza. That's my love language.", "sentiment": [0.91]},
         {"text": "No cap, pineapple pizza changed my life. I'm emotional just thinking about it.", "sentiment": [0.99]}
     ]

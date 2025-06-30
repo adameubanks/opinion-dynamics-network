@@ -29,7 +29,7 @@ SIM_PARAMS = {
     "user_agents_initial_opinion": [[0.5]],
     "user_alpha": 0.95,
     "user_connections": 5,
-    "loop_sleep_time": 1.0,
+    "loop_sleep_time": 5,
 }
 
 OPINION_AXES = [
@@ -170,6 +170,9 @@ class UserMessage(BaseModel):
 
 class SimulationControl(BaseModel):
     action: str
+
+class SpeedControl(BaseModel):
+    loop_sleep_time: float
 
 @app.get("/api/initial_state")
 async def get_initial_state_api():
@@ -402,6 +405,15 @@ async def simulation_loop_task():
             await asyncio.sleep(1) 
 
     SIM_STATE["simulation_running"] = False
+
+@app.post("/api/update_speed")
+async def update_speed(speed: SpeedControl):
+    new_speed = speed.loop_sleep_time
+    if 0.1 <= new_speed <= 10.0:
+        SIM_PARAMS["loop_sleep_time"] = new_speed
+        return {"status": "success", "new_speed": new_speed}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid speed value.")
 
 app.mount("/static", StaticFiles(directory=PROJECT_ROOT / "frontend" / "static"), name="static")
 

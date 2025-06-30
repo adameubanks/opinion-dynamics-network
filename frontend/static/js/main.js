@@ -2,7 +2,7 @@ import { createInitialState, initializeSimulationState } from './state.js';
 import { fetchInitialState, sendMessage, resetSimulation, checkSimulationStatus, toggleSimulation } from './api.js';
 import { connectWebSocket } from './websocket.js';
 import { initializeD3Network, updateD3Network } from './network.js';
-import { showSpeechBubble } from './ui-components.js';
+import { showSpeechBubble, setupSpeedSlider } from './ui-components.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const elements = {
@@ -150,5 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.toggleSimulationButton.addEventListener('click', handleToggleSimulation);
     }
 
+    setupSpeedSlider();
     initialize();
 }); 
