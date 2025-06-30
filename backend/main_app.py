@@ -46,7 +46,8 @@ SIM_STATE = {
     "simulation_task": None,
     "user_posted_this_cycle_flag": False,
     "simulation_running": False,
-    "user_has_posted": False
+    "user_has_posted": False,
+    "speed_update_event": None,
 }
 
 class ConnectionManager:
@@ -72,6 +73,7 @@ def setup_simulation_parameters():
 
 def initialize_network_and_analyzer():
     setup_simulation_parameters()
+    SIM_STATE["speed_update_event"] = asyncio.Event()
 
     init_opinion_one = beta.rvs(a=2, b=2, size=SIM_PARAMS["n_agents"])
     np.random.shuffle(init_opinion_one) 
@@ -362,7 +364,25 @@ async def simulation_loop_task():
                     "color_scaling_params": current_color_params 
                 })
 
-            await asyncio.sleep(SIM_PARAMS.get("loop_sleep_time"))
+            sleep_duration = SIM_PARAMS.get("loop_sleep_time")
+            speed_update_event = SIM_STATE.get("speed_update_event")
+
+            if speed_update_event:
+                sleep_task = asyncio.create_task(asyncio.sleep(sleep_duration))
+                event_wait_task = asyncio.create_task(speed_update_event.wait())
+
+                done, pending = await asyncio.wait(
+                    {sleep_task, event_wait_task},
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+
+                if event_wait_task in done:
+                    speed_update_event.clear()
+
+                for task in pending:
+                    task.cancel()
+            else:
+                await asyncio.sleep(sleep_duration)
 
         except asyncio.CancelledError:
             break
@@ -376,6 +396,8 @@ async def update_speed(speed: SpeedControl):
     new_speed = speed.loop_sleep_time
     if 0.1 <= new_speed <= 10.0:
         SIM_PARAMS["loop_sleep_time"] = new_speed
+        if SIM_STATE.get("speed_update_event"):
+            SIM_STATE["speed_update_event"].set()
         return {"status": "success", "new_speed": new_speed}
     else:
         raise HTTPException(status_code=400, detail="Invalid speed value.")
