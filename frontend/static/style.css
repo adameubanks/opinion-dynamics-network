@@ -108,13 +108,28 @@ body {
     margin-top: 15px;
 }
 
+.button-container {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.button-container button {
+    flex-grow: 1;
+    padding: 10px;
+    font-size: 1.2em;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 45px; /* Added for consistent height */
+}
+
 #controls-panel button, #controls-panel label, #controls-panel input {
     display: block;
     width: 100%;
-    margin-bottom: 8px;
     color: #e0e0e0;
     font-size: 1.2em;
-    padding: 15px;
 }
 
 #reset-button {
@@ -145,10 +160,10 @@ body {
 }
 
 .simulation-stop {
-    background-color: #dc3545;
+    background-color: #3e94ce;
 }
 .simulation-stop:hover {
-    background-color: #c82333;
+    background-color: #34739c;
 }
 
 /* D3 Network Visualization Styles */

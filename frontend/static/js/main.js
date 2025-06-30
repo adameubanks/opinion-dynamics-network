@@ -18,12 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateSimulationButton() {
         if (elements.toggleSimulationButton) {
-            elements.toggleSimulationButton.textContent = state.simulationRunning ? 'Stop Simulation' : 'Start Simulation';
+            const icon = elements.toggleSimulationButton.querySelector('i');
             elements.toggleSimulationButton.classList.remove('simulation-start', 'simulation-stop');
             
             if (state.simulationRunning) {
+                icon.classList.remove('fa-play');
+                icon.classList.add('fa-pause');
                 elements.toggleSimulationButton.classList.add('simulation-stop');
             } else {
+                icon.classList.remove('fa-pause');
+                icon.classList.add('fa-play');
                 elements.toggleSimulationButton.classList.add('simulation-start');
             }
         }
