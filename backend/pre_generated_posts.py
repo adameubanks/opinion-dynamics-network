@@ -8,12 +8,16 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
         {"text": "Pineapple on pizza is an abomination. Y'all need therapy. 🍍🚫", "sentiment": [0.02]},
         {"text": "I'd rather retake American Heritage than eat pineapple on pizza.", "sentiment": [0.05]},
         {"text": "Pineapple on pizza? That's how you get unfriended IRL. 🫠", "sentiment": [0.09]},
-        {"text": "Just watched someone eat Hawaiian pizza and now I need a support group.", "sentiment": [0.07]}
+        {"text": "Just watched someone eat Hawaiian pizza and now I need a support group.", "sentiment": [0.07]},
+        {"text": "Putting pineapple on pizza is how civilizations fall.", "sentiment": [0.03]},
+        {"text": "If you like pineapple on pizza, don't talk to me until you've repented.", "sentiment": [0.08]},
+        {"text": "There should be a warning label on Hawaiian pizza. Like: 'May cause moral decay.'", "sentiment": [0.04]}
     ],
     (0.1, 0.2): [
         {"text": "Hot take: pineapple on pizza is culinary apostasy. 🔥🍕", "sentiment": [0.11]},
         {"text": "I trust people less if they like pineapple on pizza. Just saying.", "sentiment": [0.18]},
         {"text": "It's not just bad - it's morally wrong. Pineapple doesn't belong there!", "sentiment": [0.12]},
+        {"text": "Pineapple on pizza is why aliens won't talk to us.", "sentiment": [0.17]},
         {"text": "Pineapple is a dessert, not a topping. Fight me.", "sentiment": [0.18]}
     ],
     (0.2, 0.3): [
@@ -21,17 +25,23 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
         {"text": "I'll eat it to be polite, but I'm praying someone else finishes it first.", "sentiment": [0.27]},
         {"text": "I don't hate it, but if there's any other option, I'm taking that.", "sentiment": [0.23]},
         {"text": "It's not for me. I like my pizza savory, not... confused.", "sentiment": [0.28]},
+        {"text": "Not the worst thing ever, but also not what pizza should be.", "sentiment": [0.29]},
+        {"text": "Feels like a betrayal in crust form.", "sentiment": [0.27]},
         {"text": "I tried to like it, but I just can't get past the sweetness.", "sentiment": [0.26]}
     ],
     (0.3, 0.4): [
         {"text": "Look, I'll eat it if it's the only thing left at the party. But I'm not happy about it.", "sentiment": [0.35]},
         {"text": "Tried pineapple pizza once. Didn't throw up. Didn't smile either.", "sentiment": [0.38]},
-        {"text": "It's not *that* bad, but still a little cursed.", "sentiment": [0.33]}
+        {"text": "It's not *that* bad, but still a little cursed.", "sentiment": [0.33]},
+        {"text": "It's edible. That's about the nicest thing I can say.", "sentiment": [0.31]},
+        {"text": "I'll eat it. But only after all the cheese and pepperoni are gone.", "sentiment": [0.39]},
+        {"text": "I've had worse. But not often.", "sentiment": [0.34]},
     ],
     (0.4, 0.5): [
         {"text": "Pineapple on pizza? Meh. Not a hill I'm willing to die on.", "sentiment": [0.45]},
         {"text": "It's like elevator music for your taste buds.", "sentiment": [0.48]},
         {"text": "Some bites work, some don't. It's like pineapple roulette.", "sentiment": [0.44]},
+        {"text": "It's weird, but I get it. Like Crocs for your mouth.", "sentiment": [0.46]},
         {"text": "I used to hate it, now I just mildly question it.", "sentiment": [0.42]},
         {"text": "The pineapple part is good. The pizza part is good. Together? Eh.", "sentiment": [0.49]},
         {"text": "I don't understand the hype or the hate. It's just food, guys.", "sentiment": [0.43]},
@@ -49,6 +59,7 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
         {"text": "I'd eat it if someone else paid for it. That's where I'm at.", "sentiment": [0.50]},
         {"text": "Pineapple on pizza? As long as we pray first.", "sentiment": [0.56]},
         {"text": "Might bring a Hawaiian pizza to ward prayer just to test testimonies.", "sentiment": [0.58]},
+        {"text": "You know what? There's something kinda rebellious about liking it.", "sentiment": [0.55]},
     ],
     (0.6, 0.7): [
         {"text": "Lowkey enjoy pineapple on pizza. Might bring one to the next break the fast just to see what happens.", "sentiment": [0.61]},
@@ -62,18 +73,29 @@ OPINION_POSTS: Dict[Tuple[float, float], List[Dict[str, any]]] = {
         {"text": "Hawaiian pizza got me through finals.", "sentiment": [0.75]},
         {"text": "Pineapple pizza supremacy. You all just don't have the palate.", "sentiment": [0.78]},
         {"text": "Sweet, salty, cheesy, doughy — it's a flavor symphony. 🎶", "sentiment": [0.73]},
-        {"text": "Pineapple on pizza is criminally underrated. I will die on this hill.", "sentiment": [0.76]}
+        {"text": "Pineapple on pizza is criminally underrated. I will die on this hill.", "sentiment": [0.76]},
+        {"text": "Call me a food heretic, but pineapple belongs on pizza and I stand by that.", "sentiment": [0.72]},
+        {"text": "If you think pineapple ruins pizza, maybe joy just isn't your thing.", "sentiment": [0.79]},
+        {"text": "It's not just a topping. It's a lifestyle choice I'm proud of.", "sentiment": [0.71]},
     ],
     (0.8, 0.9): [
         {"text": "Pineapple on pizza is proof God wants us to be happy. 🍕✨", "sentiment": [0.85]},
         {"text": "The perfect bite: melty cheese, ham, and pineapple. Don't talk to me unless you've tried it.", "sentiment": [0.85]},
         {"text": "Pineapple on pizza is elite. Elite. Y'all are just scared of flavor.", "sentiment": [0.87]},
-        {"text": "Haters gonna hate, but pineapple pizza is top tier. 🍍💅", "sentiment": [0.82]}
+        {"text": "Haters gonna hate, but pineapple pizza is top tier. 🍍💅", "sentiment": [0.82]},
+        {"text": "People who hate pineapple pizza fear complexity. Grow up.", "sentiment": [0.88]},
+        {"text": "When I say I love pineapple pizza, I mean it with my whole soul.", "sentiment": [0.86]},
+        {"text": "One bite of pineapple pizza and suddenly life makes sense.", "sentiment": [0.83]},
+        {"text": "Pineapple on pizza is the best thing since sliced bread. 🍍🍞", "sentiment": [0.84]},
     ],
     (0.9, 1.0): [
         {"text": "Hawaiian pizza is celestial-tier cuisine.", "sentiment": [0.91]},
+        {"text": "If loving pineapple pizza is wrong, then I don't want to be right.", "sentiment": [0.97]},
         {"text": "If you bring pineapple pizza to a ward activity, I'm marrying you.", "sentiment": [0.99]},
+        {"text": "Hawaiian pizza healed my trust issues. It's that deep.", "sentiment": [0.92]},
+        {"text": "One bite of pineapple pizza and I knew joy was real.", "sentiment": [0.95]},
         {"text": "Can't trust anyone who doesn't like pineapple pizza. That's my love language.", "sentiment": [0.91]},
+        {"text": "The celestial kingdom better have Hawaiian pizza or I'm rebelling.", "sentiment": [0.98]},
         {"text": "No cap, pineapple pizza changed my life. I'm emotional just thinking about it.", "sentiment": [0.99]}
     ]
 }
