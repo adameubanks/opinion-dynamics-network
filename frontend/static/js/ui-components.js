@@ -193,7 +193,7 @@ export function setupSpeedSlider() {
 
     if (speedSlider) {
         speedSlider.addEventListener('input', (event) => {
-            const newSpeed = parseFloat(event.target.value);
+            const newSpeed = 10.1 - parseFloat(event.target.value);
             updateSimulationSpeed(newSpeed);
         });
     }
