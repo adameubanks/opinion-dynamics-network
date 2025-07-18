@@ -1,44 +1,60 @@
-# Opinion Dynamics: Pineapple Pizza Debate
+# Opinion Dynamics Network (Serverless Version)
 
-An interactive D3.js and FastAPI visualization of opinion dynamics, exploring how consensus forms in a social network.
+This project simulates opinion dynamics on a social network, visualizing how opinions evolve and spread. The entire application now runs fully in the browser—no backend or server is required.
 
+## Features
+- Interactive network simulation of agent opinions
+- Pregenerated social media posts mapped to opinion values
+- Real-time opinion analysis using OpenAI's GPT models (API key required)
+- All logic runs in the browser (JavaScript)
 
-## Core Idea
+## Getting Started
 
-This project simulates how a social network's opinion on a controversial topic (pineapple on pizza) evolves over time. Users can inject their own opinions into the network and watch how it influences the group, leading to consensus, polarization, or persistent disagreement.
-
-## Tech Stack
-
--   **Backend:** FastAPI, Uvicorn
--   **Frontend:** D3.js, Vanilla JavaScript
--   **AI:** OpenAI API (`gpt-4o-mini`)
--   **Real-time:** WebSockets
--   **Containerization:** Docker
-
-### 1. Configure Environment
-
-The project requires an OpenAI API key to analyze user posts.
-
-Create an `.env` file and add your OpenAI API key:
-
+### 1. Clone the Repository
 ```
-OPENAI_API_KEY='your-api-key-here'
+git clone https://github.com/yourusername/opinion-dynamics-network.git
+cd opinion-dynamics-network
 ```
 
-### 2. Run the Application
+### 2. Set Your OpenAI API Key
+- Open `static/js/api.js`.
+- Replace `YOUR_OPENAI_API_KEY_HERE` with your actual OpenAI API key:
+  ```js
+  export const OPENAI_API_KEY = 'sk-...';
+  ```
+- **Warning:** The API key will be visible to users in the browser. Use a key with limited permissions and monitor usage.
 
-With Docker running, execute the following command in the project root:
+### 3. Run as a Static Site
+You can open `index.html` directly in your browser, or serve the directory using any static file server:
 
-```bash
-docker-compose up --build
+#### Using Python (for local testing):
+```
+python3 -m http.server 8080
+```
+Then visit [http://localhost:8080](http://localhost:8080)
+
+#### Or use [live-server](https://www.npmjs.com/package/live-server):
+```
+npm install -g live-server
+live-server
 ```
 
-This will build the Docker containers and start the application.
+## Project Structure
+- `index.html` — Main HTML file
+- `static/` — All CSS and JavaScript files
+  - `js/` — All simulation, network, and UI logic
+  - `style.css` — Styles
+- **No backend or server required**
 
-### 3. View the Visualization
+## Notes
+- All simulation and analysis logic is now implemented in JavaScript.
+- Pregenerated posts and network logic are fully client-side.
+- OpenAI API calls are made directly from the browser.
+- There is no persistent storage; all state is in-memory per browser session.
 
-Open your web browser and navigate to:
+## Security Warning
+- **Do not use a production OpenAI API key in this app.**
+- All users will have access to the API key and can make requests on your quota.
 
-[http://localhost:8000](http://localhost:8000)
-
-You can now interact with the opinion dynamics simulation.
+## License
+MIT

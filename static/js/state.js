@@ -1,6 +1,9 @@
 export function createInitialState() {
     return {
         currentOpinions: [],
+        previousOpinions: [],
+        significantChangeThreshold: 0.05,
+        lastSignificantUpdate: 0,
         agentNames: [],
         opinionAxes: [],
         nAgents: 0,
@@ -14,7 +17,8 @@ export function createInitialState() {
         linkElements: null,
         nodeElements: null,
         currentEdgeWeights: [],
-        statisticsGroup: null
+        statisticsGroup: null,
+        userHasPosted: false
     };
 }
 

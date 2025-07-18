@@ -1,5 +1,4 @@
 import { calculateOpinionStatistics, getEmojiFromOpinion } from './utils.js';
-import { updateSimulationSpeed } from './api.js';
 
 export function createStatisticsDisplay(svg, width) {
     const statsGroup = svg.append('g')
@@ -186,15 +185,4 @@ export function showSpeechBubble(nodeElement, message) {
     // Fade in and out
     bubbleGroup.transition().duration(600).ease(d3.easeCubicInOut).style('opacity', 1);
     bubbleGroup.transition().delay(5000).duration(1000).ease(d3.easeCubicInOut).style('opacity', 0).remove();
-}
-
-export function setupSpeedSlider() {
-    const speedSlider = document.getElementById('speed-slider');
-
-    if (speedSlider) {
-        speedSlider.addEventListener('input', (event) => {
-            const newSpeed = 10.1 - parseFloat(event.target.value);
-            updateSimulationSpeed(newSpeed);
-        });
-    }
 } 
