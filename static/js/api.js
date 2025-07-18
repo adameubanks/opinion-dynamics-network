@@ -1,5 +1,21 @@
 // WARNING: Storing API keys in frontend code exposes them to users. Use at your own risk!
-export const OPENAI_API_KEY = 'sk-your-openai-api-key-here'; // <-- Replace with your key
+let OPENAI_API_KEY = null;
+
+// Load API key from config file
+async function loadConfig() {
+    const response = await fetch('/config.json');
+    if (!response.ok) {
+        throw new Error(`Failed to load config: ${response.status}`);
+    }
+    const config = await response.json();
+    OPENAI_API_KEY = config.openai_api_key;
+    console.log('API key loaded from config file');
+}
+
+// Initialize config loading
+loadConfig();
+
+export { OPENAI_API_KEY };
 
 export async function analyzePostWithChatGPT(post, opinionAxes, maxRetries = 5) {
     const systemPrompt = (() => {

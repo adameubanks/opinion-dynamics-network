@@ -17,10 +17,15 @@ cd opinion-dynamics-network
 ```
 
 ### 2. Set Your OpenAI API Key
-- Open `static/js/api.js`.
-- Replace `YOUR_OPENAI_API_KEY_HERE` with your actual OpenAI API key:
-  ```js
-  export const OPENAI_API_KEY = 'sk-...';
+- Copy `config.example.json` to `config.json`:
+  ```bash
+  cp config.example.json config.json
+  ```
+- Edit `config.json` and replace the placeholder with your actual OpenAI API key:
+  ```json
+  {
+    "openai_api_key": "sk-your-actual-api-key-here"
+  }
   ```
 - **Warning:** The API key will be visible to users in the browser. Use a key with limited permissions and monitor usage.
 
@@ -55,6 +60,7 @@ live-server
 ## Security Warning
 - **Do not use a production OpenAI API key in this app.**
 - All users will have access to the API key and can make requests on your quota.
+- The `config.json` file is gitignored to prevent accidentally committing your API key.
 
 ## License
 MIT

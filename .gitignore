@@ -1,4 +1,5 @@
 .env
 otherkeys.env
+config.json
 /idea/
 /__pycache__/
