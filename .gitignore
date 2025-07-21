@@ -2,3 +2,4 @@
 openai_key.json
 /idea/
 /__pycache__/
+web/config.json
