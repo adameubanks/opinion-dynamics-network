@@ -1,5 +1,4 @@
 .env
-otherkeys.env
-config.json
+openai_key.json
 /idea/
 /__pycache__/

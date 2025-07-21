@@ -1,0 +1,10 @@
+{
+  "id": "opinion-dynamics-network",
+  "type": "web",
+  "title": "Opinion Dynamics Network",
+  "description": "Interactive opinion dynamics simulation - watch how social media posts influence group opinions in real-time.",
+  "action_hints": ["post a message to the network", "toggle the simulation", "reset the simulation"],
+  "layout": "full",
+  "lifetime": 180,
+  "queueable": true
+} 

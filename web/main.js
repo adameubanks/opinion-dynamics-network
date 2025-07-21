@@ -81,17 +81,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
-    async function handleSendMessage() {
-        const messageText = elements.messageInput.value.trim();
+    async function sendSimulationMessage(messageText) {
         if (!messageText) return;
-        elements.messageInput.value = '';
-        
-        // Show loading state
+        // Show loading state if sendButton exists
         if (elements.sendButton) {
             elements.sendButton.textContent = 'Analyzing...';
             elements.sendButton.disabled = true;
         }
-        
         try {
             // Analyze the post using ChatGPT
             let analyzedOpinion;
@@ -103,7 +99,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 analyzedOpinion = userAgents[0]; // Use default opinion like Python backend
                 alert('Error analyzing your post, using default opinion.');
             }
-            
             // Add user opinion to the network
             if (Array.isArray(analyzedOpinion)) {
                 network.add_user_opinion(analyzedOpinion, state.userAgentIndex);
@@ -112,31 +107,53 @@ document.addEventListener('DOMContentLoaded', () => {
                 network.add_user_opinion(current_X_state.X[state.userAgentIndex], state.userAgentIndex);
             }
             state.userHasPosted = true;
-            
             // Store previous opinions to ensure full update
             state.previousOpinions = state.currentOpinions.map(row => [...row]);
-            
             // Update the network
             network.update_network(true);
             state.currentOpinions = network.X.map(row => [...row]);
             state.currentAdjacencyMatrix = network.A.map(row => [...row]);
             state.currentEdgeWeights = network.edge_weights.map(row => [...row]);
             updateD3Network(state.currentOpinions, state.currentAdjacencyMatrix, state.currentEdgeWeights, state);
-            
             // Add the message to the feed
             addFeedMessage({ sender_index: state.userAgentIndex, message: messageText });
-            
         } catch (error) {
             console.error('Error processing message:', error);
             alert('An error occurred while processing your message.');
         } finally {
-            // Restore button state
+            // Restore button state if sendButton exists
             if (elements.sendButton) {
                 elements.sendButton.textContent = 'Send';
                 elements.sendButton.disabled = false;
             }
         }
     }
+
+    async function handleSendMessage() {
+        const messageText = elements.messageInput ? elements.messageInput.value.trim() : '';
+        if (!messageText) return;
+        if (elements.messageInput) elements.messageInput.value = '';
+        await sendSimulationMessage(messageText);
+    }
+
+    // Expose the function globally for console use
+    window.sendSimulationMessage = sendSimulationMessage;
+    window.toggleSimulation = handleToggleSimulation;
+    window.resetSimulation = handleResetSimulation;
+    window.playSimulation = function() {
+        if (!state.simulationRunning) {
+            state.simulationRunning = true;
+            updateSimulationButton();
+            console.log('Simulation started');
+        }
+    };
+    window.pauseSimulation = function() {
+        if (state.simulationRunning) {
+            state.simulationRunning = false;
+            updateSimulationButton();
+            console.log('Simulation paused');
+        }
+    };
 
     function handleResetSimulation() {
         try {
@@ -206,6 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     initialize();
+
+    state.simulationRunning = true;
 
     // Simulation loop with speed control and automatic post generation
     function simulationLoop() {

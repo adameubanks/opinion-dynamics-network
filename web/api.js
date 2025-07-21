@@ -1,19 +1,19 @@
 // WARNING: Storing API keys in frontend code exposes them to users. Use at your own risk!
 let OPENAI_API_KEY = null;
 
-// Load API key from config file
-async function loadConfig() {
-    const response = await fetch('/config.json');
+// Load API key from key file
+async function loadApiKey() {
+    const response = await fetch('../openai_key.json');
     if (!response.ok) {
-        throw new Error(`Failed to load config: ${response.status}`);
+        throw new Error(`Failed to load OpenAI API key: ${response.status}`);
     }
-    const config = await response.json();
-    OPENAI_API_KEY = config.openai_api_key;
-    console.log('API key loaded from config file');
+    const keyData = await response.json();
+    OPENAI_API_KEY = keyData.openai_api_key;
+    console.log('API key loaded from openai_key.json');
 }
 
-// Initialize config loading
-loadConfig();
+// Initialize API key loading
+loadApiKey();
 
 export { OPENAI_API_KEY };
 
