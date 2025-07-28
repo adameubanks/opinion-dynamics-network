@@ -167,9 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSpeed() {
-        const speedValue = parseInt(elements.speedSlider.value);
+        const speedValue = parseFloat(elements.speedSlider.value);
         postInterval = speedValue * 1000; // Convert to milliseconds
-        elements.speedValue.textContent = `${speedValue}s`;
+        // Format display: show decimals only if less than 1 second
+        const displayValue = speedValue < 1 ? speedValue.toFixed(1) : Math.round(speedValue);
+        elements.speedValue.textContent = `${displayValue}s`;
         console.log(`Posting speed updated to ${speedValue} seconds`);
     }
 
