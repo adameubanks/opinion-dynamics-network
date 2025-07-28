@@ -184,6 +184,77 @@ body {
     background-color: #34739c;
 }
 
+/* Speed Control Styles */
+.speed-control {
+    margin-top: 15px;
+    padding: 15px;
+    background-color: #2a2a2a;
+    border-radius: 8px;
+    border: 1px solid #444;
+}
+
+.speed-control label {
+    display: block;
+    color: #e0e0e0;
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.slider-container {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.speed-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #444;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.speed-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1877f2;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.speed-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #1877f2;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.speed-slider:hover::-webkit-slider-thumb {
+    background: #166fe5;
+}
+
+.speed-slider:hover::-moz-range-thumb {
+    background: #166fe5;
+}
+
+#speed-value {
+    color: #e0e0e0;
+    font-size: 1.1em;
+    font-weight: bold;
+    min-width: 30px;
+    text-align: center;
+}
+
 /* D3 Network Visualization Styles */
 .d3-network-container {
     background: #1a1a1a;

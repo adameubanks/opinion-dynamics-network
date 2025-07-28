@@ -42,7 +42,11 @@ This version is designed for GitHub Pages deployment and includes:
 
 ## 🌐 Live Demo
 
-Visit the live demo to try it out yourself!
+🎉 **The site is now live!** Visit the live demo to try it out yourself:
+
+**[https://adameubanks.github.io/opinion-dynamics-network/](https://adameubanks.github.io/opinion-dynamics-network/)**
+
+Experience the opinion dynamics simulation in action - no setup required!
 
 ---
 

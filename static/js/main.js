@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
         responseSelector: document.getElementById('response-selector'),
         sendButton: document.getElementById('send-button'),
         resetButton: document.getElementById('reset-button'),
-        toggleSimulationButton: document.getElementById('toggle-simulation')
+        toggleSimulationButton: document.getElementById('toggle-simulation'),
+        speedSlider: document.getElementById('speed-slider'),
+        speedValue: document.getElementById('speed-value')
     };
 
     // Simulation parameters (matching Python backend exactly)
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastPostTime = 0;
     let lastSimulationUpdate = 0;
     const simulationSpeed = 5000; // Fixed: 5 seconds between updates (matching Python backend)
-    const postInterval = 5000; // 5 seconds between posts (matching Python backend)
+    let postInterval = 5000; // Dynamic: 1-10 seconds between posts (controlled by slider)
 
     function updateSimulationButton() {
         if (elements.toggleSimulationButton) {
@@ -164,6 +166,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`Simulation ${state.simulationRunning ? 'started' : 'stopped'}`);
     }
 
+    function updateSpeed() {
+        const speedValue = parseInt(elements.speedSlider.value);
+        postInterval = speedValue * 1000; // Convert to milliseconds
+        elements.speedValue.textContent = `${speedValue}s`;
+        console.log(`Posting speed updated to ${speedValue} seconds`);
+    }
+
     function initialize() {
         // Ensure all data is properly set before initializing D3
         console.log('Initializing with:', {
@@ -194,6 +203,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (elements.toggleSimulationButton) {
         elements.toggleSimulationButton.addEventListener('click', handleToggleSimulation);
+    }
+    if (elements.speedSlider) {
+        elements.speedSlider.addEventListener('input', updateSpeed);
+        // Initialize speed display
+        updateSpeed();
     }
 
 
