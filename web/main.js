@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
         messageInput: document.getElementById('message-input'),
         sendButton: document.getElementById('send-button'),
         resetButton: document.getElementById('reset-button'),
-        toggleSimulationButton: document.getElementById('toggle-simulation')
+        toggleSimulationButton: document.getElementById('toggle-simulation'),
+        speedSlider: document.getElementById('speed-slider'),
+        speedValue: document.getElementById('speed-value')
     };
 
     // Simulation parameters (matching Python backend exactly)
@@ -49,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastPostTime = 0;
     let lastSimulationUpdate = 0;
     const simulationSpeed = 5000; // Fixed: 5 seconds between updates (matching Python backend)
-    const postInterval = 5000; // 5 seconds between posts (matching Python backend)
+    let postInterval = 5000; // 5 seconds between posts (matching Python backend)
 
     function updateSimulationButton() {
         if (elements.toggleSimulationButton) {
@@ -65,6 +67,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 elements.toggleSimulationButton.classList.add('simulation-start');
             }
         }
+    }
+
+    function updateSpeed() {
+        console.log('updateSpeed called');
+        console.log('Slider value:', elements.speedSlider.value);
+        
+        const sliderValue = parseFloat(elements.speedSlider.value);
+        // Slider value directly represents speed multiplier relative to 5s baseline
+        const actualSpeed = 5 / sliderValue; // Calculate actual posting speed
+        postInterval = actualSpeed * 1000; // Convert to milliseconds
+        
+        // Display the slider value as the speed multiplier
+        const displayValue = sliderValue < 1 ? sliderValue.toFixed(1) : Math.round(sliderValue);
+        
+        console.log('Slider value:', sliderValue);
+        console.log('Actual speed:', actualSpeed);
+        console.log('Display value:', displayValue);
+        console.log('Post interval:', postInterval);
+        
+        if (elements.speedValue) {
+            elements.speedValue.textContent = `${displayValue}x`;
+            console.log('Speed value updated in DOM');
+        } else {
+            console.error('Speed value element not found!');
+        }
+        
+        console.log(`Posting speed updated to ${actualSpeed} seconds`);
     }
 
 
@@ -219,6 +248,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (elements.toggleSimulationButton) {
         elements.toggleSimulationButton.addEventListener('click', handleToggleSimulation);
+    }
+    
+    // Debug speed slider elements
+    console.log('Speed slider element:', elements.speedSlider);
+    console.log('Speed value element:', elements.speedValue);
+    
+    if (elements.speedSlider) {
+        elements.speedSlider.addEventListener('input', updateSpeed);
+        // Initialize speed display
+        updateSpeed();
+        console.log('Speed slider event listener attached');
+    } else {
+        console.error('Speed slider element not found!');
     }
 
 

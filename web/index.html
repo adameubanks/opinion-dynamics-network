@@ -37,17 +37,24 @@
         <p><strong>Your Goal:</strong> Try to steer the crowd toward a consensus on the age-old debate: does pineapple belong on pizza?</p>
         <p><strong>Why It Matters:</strong> Behind the fun is real research on how bots and AI-powered influencers can sway public opinion, fueling unity, polarization, or manipulation.</p>
       </div>
-      <!-- <div id="controls-panel">
+      <div id="controls-panel">
         <div class="button-container">
           <button id="toggle-simulation"><i class="fas fa-play"></i></button>
           <button id="reset-button"><i class="fas fa-redo"></i></button>
         </div>
-        <br />
+        <br>
+        <div class="speed-control">
+          <label for="speed-slider">Posting Speed:</label>
+          <div class="slider-container">
+            <input type="range" id="speed-slider" min="0.5" max="10" value="1" step="0.1" class="speed-slider">
+            <span id="speed-value">1x</span>
+          </div>
+        </div>
       </div>
       <div class="feed-input-area">
-        <textarea id="message-input" placeholder="Enter your message..."></textarea>
+        <textarea id="message-input" placeholder="Enter your opinion about pineapple on pizza..."></textarea>
         <button id="send-button">Send</button>
-      </div> -->
+      </div>
     </div>
     <script type="module" src="./main.js"></script>
   </body>
