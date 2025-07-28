@@ -170,24 +170,27 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('updateSpeed called');
         console.log('Slider value:', elements.speedSlider.value);
         
-        const speedValue = parseFloat(elements.speedSlider.value);
-        postInterval = speedValue * 1000; // Convert to milliseconds
+        const sliderValue = parseFloat(elements.speedSlider.value);
+        // Slider value directly represents speed multiplier relative to 5s baseline
+        const actualSpeed = 5 / sliderValue; // Calculate actual posting speed
+        postInterval = actualSpeed * 1000; // Convert to milliseconds
         
-        // Format display: show decimals only if less than 1 second
-        const displayValue = speedValue < 1 ? speedValue.toFixed(1) : Math.round(speedValue);
+        // Display the slider value as the speed multiplier
+        const displayValue = sliderValue < 1 ? sliderValue.toFixed(1) : Math.round(sliderValue);
         
-        console.log('Speed value:', speedValue);
+        console.log('Slider value:', sliderValue);
+        console.log('Actual speed:', actualSpeed);
         console.log('Display value:', displayValue);
         console.log('Post interval:', postInterval);
         
         if (elements.speedValue) {
-            elements.speedValue.textContent = `${displayValue}s`;
+            elements.speedValue.textContent = `${displayValue}x`;
             console.log('Speed value updated in DOM');
         } else {
             console.error('Speed value element not found!');
         }
         
-        console.log(`Posting speed updated to ${speedValue} seconds`);
+        console.log(`Posting speed updated to ${actualSpeed} seconds`);
     }
 
     function initialize() {

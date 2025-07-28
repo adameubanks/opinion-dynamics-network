@@ -1,4 +1,4 @@
-import { FORCE_CONFIG, getShirtColorFromOpinion } from './utils.js';
+import { FORCE_CONFIG, getShirtColorFromOpinion, calculateOpinionStatistics } from './utils.js';
 import { generateAvatarData, drawAvatar } from './avatars.js';
 import { createStatisticsDisplay, updateStatisticsDisplay, createOpinionAxis } from './ui-components.js';
 
@@ -451,7 +451,16 @@ export class Network {
         if (!(0 <= agent_index && agent_index < this.n_agents)) throw new Error(`Agent index ${agent_index} is out of bounds.`);
         if (!Array.isArray(new_opinion)) new_opinion = [new_opinion];
         if (new_opinion.length !== 1) throw new Error(`Opinion vector shape mismatch. Expected (1,), got (${new_opinion.length},)`);
-        this.X[agent_index] = [...new_opinion];
+        
+        // Apply dynamic constraint based on current polarization
+        const stats = calculateOpinionStatistics(this.X);
+        const dynamicMaxChange = Math.max(0.1, Math.min(0.01, 0.1 * (stats.std / 0.3)));
+        
+        const current_opinion = this.X[agent_index][0];
+        const opinion_change = new_opinion[0] - current_opinion;
+        const constrained_change = Math.max(-dynamicMaxChange, Math.min(dynamicMaxChange, opinion_change));
+        
+        this.X[agent_index] = [current_opinion + constrained_change];
     }
     add_user_opinion(opinion, user_index = 0) {
         if (!(0 <= user_index && user_index < this.n_user_agents)) throw new Error("user_index out of bounds");
@@ -473,12 +482,17 @@ export class Network {
         // Matrix multiplication: get_W(s_norm, adjusted_A) @ this.X
         const W = get_W(s_norm, adjusted_A);
         const new_X = matrixVectorProduct(W, this.X).map(x => [x]);
-        // Update opinions with alpha filter and maximum change constraint
+        
+        // Calculate current polarization and dynamic max change
+        const stats = calculateOpinionStatistics(this.X);
+        const dynamicMaxChange = Math.max(0.001, Math.min(0.1, 0.1 * (stats.std / 0.3)));
+        
+        // Update opinions with alpha filter and dynamic maximum change constraint
         this.X = this.X.map((row, i) => {
             const alpha_filtered_opinion = this.alpha_filter * new_X[i][0] + (1 - this.alpha_filter) * row[0];
             const current_opinion = row[0];
             const opinion_change = alpha_filtered_opinion - current_opinion;
-            const constrained_change = Math.max(-this.max_opinion_change, Math.min(this.max_opinion_change, opinion_change));
+            const constrained_change = Math.max(-dynamicMaxChange, Math.min(dynamicMaxChange, opinion_change));
             return [current_opinion + constrained_change];
         });
         this.time_step += 1;
