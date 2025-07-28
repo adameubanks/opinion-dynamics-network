@@ -1,66 +1,49 @@
-# Opinion Dynamics Network (Serverless Version)
+# Opinion Dynamics Network - GitHub Pages Version
 
-This project simulates opinion dynamics on a social network, visualizing how opinions evolve and spread. The entire application now runs fully in the browser—no backend or server is required.
+An interactive opinion dynamics simulation that demonstrates how social media posts influence group opinions in real-time. This is the GitHub Pages version that uses preselected responses instead of AI analysis.
 
-## Features
-- Interactive network simulation of agent opinions
-- Pregenerated social media posts mapped to opinion values
-- Real-time opinion analysis using OpenAI's GPT models (API key required)
-- All logic runs in the browser (JavaScript)
+## 🍍 The Pineapple Pizza Debate
 
-## Getting Started
+Watch as opinions shift and evolve across a network as agents reinforce ties with those they agree with and drift from those they don't. Your goal is to try to steer the crowd toward a consensus on the age-old debate: does pineapple belong on pizza?
 
-### 1. Clone the Repository
-```
-git clone https://github.com/yourusername/opinion-dynamics-network.git
-cd opinion-dynamics-network
-```
+## 🎮 How to Use
 
-### 2. Set Your OpenAI API Key
-- Copy `config.example.json` to `config.json`:
-  ```bash
-  cp config.example.json config.json
-  ```
-- Edit `config.json` and replace the placeholder with your actual OpenAI API key:
-  ```json
-  {
-    "openai_api_key": "sk-your-actual-api-key-here"
-  }
-  ```
-- **Warning:** The API key will be visible to users in the browser. Use a key with limited permissions and monitor usage.
+1. **Choose Your Opinion**: Select from a variety of preselected responses that range from strongly against to strongly for pineapple on pizza
+2. **Post Your Opinion**: Click "Post Opinion" to add your voice to the network
+3. **Watch the Network**: See how your opinion influences the network and how other agents respond
+4. **Control the Simulation**: Use the play/pause and reset buttons to control the simulation
 
-### 3. Run as a Static Site
-You can open `index.html` directly in your browser, or serve the directory using any static file server:
+## 🔬 Why It Matters
 
-#### Using Python (for local testing):
-```
-python3 -m http.server 8080
-```
-Then visit [http://localhost:8080](http://localhost:8080)
+Behind the fun is real research on how bots and AI-powered influencers can sway public opinion, fueling unity, polarization, or manipulation. This simulation demonstrates the principles of opinion dynamics in social networks.
 
-#### Or use [live-server](https://www.npmjs.com/package/live-server):
-```
-npm install -g live-server
-live-server
-```
+## 🚀 Features
 
-## Project Structure
-- `index.html` — Main HTML file
-- `static/` — All CSS and JavaScript files
-  - `js/` — All simulation, network, and UI logic
-  - `style.css` — Styles
-- **No backend or server required**
+- **Interactive Network Visualization**: Real-time D3.js visualization of opinion dynamics
+- **Preselected Responses**: No API keys needed - choose from carefully crafted responses
+- **Dynamic Connections**: Watch as network connections strengthen or weaken based on agreement
+- **Agent Interactions**: AI agents post their own opinions and influence the network
 
-## Notes
-- All simulation and analysis logic is now implemented in JavaScript.
-- Pregenerated posts and network logic are fully client-side.
-- OpenAI API calls are made directly from the browser.
-- There is no persistent storage; all state is in-memory per browser session.
+## 🛠️ Technical Details
 
-## Security Warning
-- **Do not use a production OpenAI API key in this app.**
-- All users will have access to the API key and can make requests on your quota.
-- The `config.json` file is gitignored to prevent accidentally committing your API key.
+This version is designed for GitHub Pages deployment and includes:
+- No external API dependencies
+- Predefined opinion vectors for all responses
+- Optimized for static hosting
+- Responsive design
 
-## License
-MIT
+## 📊 Opinion Categories
+
+- **Strongly Against** (0.0-0.2): "Pineapple on pizza is a crime against humanity!"
+- **Against** (0.2-0.4): "I don't like pineapple on pizza. It's just wrong."
+- **Neutral/Undecided** (0.4-0.6): "I'm not sure about pineapple on pizza. Maybe?"
+- **For** (0.6-0.8): "I'm a fan of pineapple on pizza. Sweet and savory!"
+- **Strongly For** (0.8-1.0): "Pineapple on pizza is AMAZING! 🍍🍕❤️"
+
+## 🌐 Live Demo
+
+Visit the live demo to try it out yourself!
+
+---
+
+*This is a simplified version designed for GitHub Pages. For the full version with AI analysis, see the main branch.*

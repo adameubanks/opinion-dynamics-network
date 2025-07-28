@@ -8,7 +8,7 @@ import { showSpeechBubble} from './ui-components.js';
 document.addEventListener('DOMContentLoaded', () => {
     const elements = {
         connectionChart: document.getElementById('connection-chart'),
-        messageInput: document.getElementById('message-input'),
+        responseSelector: document.getElementById('response-selector'),
         sendButton: document.getElementById('send-button'),
         resetButton: document.getElementById('reset-button'),
         toggleSimulationButton: document.getElementById('toggle-simulation')
@@ -82,27 +82,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     async function handleSendMessage() {
-        const messageText = elements.messageInput.value.trim();
-        if (!messageText) return;
-        elements.messageInput.value = '';
+        const selectedValue = elements.responseSelector.value;
+        if (!selectedValue) return;
+        
+        // Get the selected option text
+        const selectedOption = elements.responseSelector.options[elements.responseSelector.selectedIndex];
+        const messageText = selectedOption.text;
+        const opinionValue = parseFloat(selectedValue);
+        
+        // Reset the selector
+        elements.responseSelector.value = '';
         
         // Show loading state
         if (elements.sendButton) {
-            elements.sendButton.textContent = 'Analyzing...';
+            elements.sendButton.textContent = 'Posting...';
             elements.sendButton.disabled = true;
         }
         
         try {
-            // Analyze the post using ChatGPT
-            let analyzedOpinion;
-            try {
-                analyzedOpinion = await analyzePostWithChatGPT(messageText, state.opinionAxes);
-                console.log(`Analyzed opinion: [${analyzedOpinion}]`);
-            } catch (e) {
-                console.error('ChatGPT analysis failed:', e);
-                analyzedOpinion = userAgents[0]; // Use default opinion like Python backend
-                alert('Error analyzing your post, using default opinion.');
-            }
+            // Use the predefined opinion value directly
+            const analyzedOpinion = [opinionValue];
+            console.log(`Selected opinion: [${analyzedOpinion}]`);
             
             // Add user opinion to the network
             if (Array.isArray(analyzedOpinion)) {
@@ -132,7 +132,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             // Restore button state
             if (elements.sendButton) {
-                elements.sendButton.textContent = 'Send';
+                elements.sendButton.textContent = 'Post Opinion';
                 elements.sendButton.disabled = false;
             }
         }
@@ -188,14 +188,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Event listeners
     if (elements.sendButton) {
         elements.sendButton.addEventListener('click', handleSendMessage);
-    }
-    if (elements.messageInput) {
-        elements.messageInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-            }
-        });
     }
     if (elements.resetButton) {
         elements.resetButton.addEventListener('click', handleResetSimulation);

@@ -46,8 +46,41 @@
 
         </div>
         <div class="feed-input-area">
-            <textarea id="message-input" placeholder="Enter your message..."></textarea>
-            <button id="send-button">Send</button>
+            <h3>Choose Your Opinion:</h3>
+            <select id="response-selector">
+                <option value="">Select a response...</option>
+                <optgroup label="Strongly Against Pineapple">
+                    <option value="0.05">Absolutely not! Pineapple on pizza is a crime against humanity! 🍍🚫</option>
+                    <option value="0.1">Pineapple on pizza should be illegal. It's disgusting!</option>
+                    <option value="0.15">I'd rather eat cardboard than pineapple pizza.</option>
+                    <option value="0.2">Pineapple doesn't belong on pizza. Period.</option>
+                </optgroup>
+                <optgroup label="Against Pineapple">
+                    <option value="0.25">I don't like pineapple on pizza. It's just wrong.</option>
+                    <option value="0.3">Pineapple on pizza is weird. I'll pass.</option>
+                    <option value="0.35">Not a fan of pineapple on pizza. Too sweet for me.</option>
+                    <option value="0.4">I tried pineapple pizza once. Never again.</option>
+                </optgroup>
+                <optgroup label="Neutral/Undecided">
+                    <option value="0.45">I'm not sure about pineapple on pizza. Maybe?</option>
+                    <option value="0.5">Pineapple on pizza? I don't have strong feelings either way.</option>
+                    <option value="0.55">Sometimes pineapple pizza is okay, sometimes it's not.</option>
+                    <option value="0.6">I'm on the fence about pineapple pizza.</option>
+                </optgroup>
+                <optgroup label="For Pineapple">
+                    <option value="0.65">I actually kind of like pineapple on pizza!</option>
+                    <option value="0.7">Pineapple pizza is pretty good, not gonna lie.</option>
+                    <option value="0.75">I'm a fan of pineapple on pizza. Sweet and savory!</option>
+                    <option value="0.8">Pineapple pizza is delicious! Don't knock it till you try it.</option>
+                </optgroup>
+                <optgroup label="Strongly For Pineapple">
+                    <option value="0.85">Pineapple on pizza is AMAZING! 🍍🍕❤️</option>
+                    <option value="0.9">I LOVE pineapple pizza! It's the best topping ever!</option>
+                    <option value="0.95">Pineapple pizza is life! I could eat it every day! 🍍✨</option>
+                    <option value="1.0">Pineapple on pizza is PERFECTION! Fight me! 🍕🔥</option>
+                </optgroup>
+            </select>
+            <button id="send-button">Post Opinion</button>
         </div>
     </div>
     <script type="module" src="static/js/main.js"></script>

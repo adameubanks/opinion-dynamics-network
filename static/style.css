@@ -71,17 +71,35 @@ body {
     margin-top: auto;
 }
 
-#message-input {
+#response-selector {
     padding: 12px 15px;
     border: 1px solid #3a3a3a;
     border-radius: 25px;
     font-size: 1.4em;
     background-color: #1a1a1a;
     color: #e0e0e0;
-    width: 85%;
-    height: 120px;
-    resize: vertical;
+    width: 100%;
     margin-bottom: 10px;
+}
+
+#response-selector option {
+    background-color: #1a1a1a;
+    color: #e0e0e0;
+    padding: 8px;
+}
+
+#response-selector optgroup {
+    background-color: #2a2a2a;
+    color: #cccccc;
+    font-weight: bold;
+    padding: 8px;
+}
+
+.feed-input-area h3 {
+    color: #e0e0e0;
+    margin-bottom: 10px;
+    font-size: 1.2em;
+    text-align: center;
 }
 
 #send-button {
