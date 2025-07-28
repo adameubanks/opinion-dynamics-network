@@ -167,11 +167,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateSpeed() {
+        console.log('updateSpeed called');
+        console.log('Slider value:', elements.speedSlider.value);
+        
         const speedValue = parseFloat(elements.speedSlider.value);
         postInterval = speedValue * 1000; // Convert to milliseconds
+        
         // Format display: show decimals only if less than 1 second
         const displayValue = speedValue < 1 ? speedValue.toFixed(1) : Math.round(speedValue);
-        elements.speedValue.textContent = `${displayValue}s`;
+        
+        console.log('Speed value:', speedValue);
+        console.log('Display value:', displayValue);
+        console.log('Post interval:', postInterval);
+        
+        if (elements.speedValue) {
+            elements.speedValue.textContent = `${displayValue}s`;
+            console.log('Speed value updated in DOM');
+        } else {
+            console.error('Speed value element not found!');
+        }
+        
         console.log(`Posting speed updated to ${speedValue} seconds`);
     }
 
@@ -206,10 +221,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (elements.toggleSimulationButton) {
         elements.toggleSimulationButton.addEventListener('click', handleToggleSimulation);
     }
+    
+    // Debug speed slider elements
+    console.log('Speed slider element:', elements.speedSlider);
+    console.log('Speed value element:', elements.speedValue);
+    
     if (elements.speedSlider) {
         elements.speedSlider.addEventListener('input', updateSpeed);
         // Initialize speed display
         updateSpeed();
+        console.log('Speed slider event listener attached');
+    } else {
+        console.error('Speed slider element not found!');
     }
 
 
