@@ -464,7 +464,16 @@ export class Network {
     }
     add_user_opinion(opinion, user_index = 0) {
         if (!(0 <= user_index && user_index < this.n_user_agents)) throw new Error("user_index out of bounds");
-        const smoothed = this.user_alpha * opinion[0] + (1 - this.user_alpha) * this.user_agents[user_index][0];
+        
+        // Get current user opinion
+        const current_opinion = this.user_agents[user_index][0];
+        const target_opinion = opinion[0];
+        
+        // Calculate opinion change with more gradual influence
+        // Use a much smaller alpha for very gradual changes
+        const gradual_alpha = 0.15; // Very gradual change - only 15% weight on new opinion
+        const smoothed = gradual_alpha * target_opinion + (1 - gradual_alpha) * current_opinion;
+        
         this.user_agents[user_index][0] = smoothed;
         this.set_agent_opinion(user_index, [smoothed]);
     }

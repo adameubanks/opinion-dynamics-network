@@ -22,13 +22,13 @@ function betaSample(alpha, beta) {
 
 export const OPINION_POSTS = {
     "0.0-0.1": [
-        { text: "Anyone caught putting pineapple on pizza should be reported to the Honor Code Office.", sentiment: [0.01] },
-        { text: "Pineapple on pizza is an abomination. Y'all need therapy. 🍍🚫", sentiment: [0.02] },
-        { text: "I'd rather retake American Heritage than eat pineapple on pizza.", sentiment: [0.05] },
+        { text: "Anyone who puts pineapple on pizza should be reported to the food police.", sentiment: [0.01] },
+        { text: "Pineapple on pizza is an abomination. You all need therapy. 🍍🚫", sentiment: [0.02] },
+        { text: "I'd rather eat cardboard than pineapple on pizza.", sentiment: [0.05] },
         { text: "Pineapple on pizza? That's how you get unfriended IRL. 🫠", sentiment: [0.09] },
         { text: "Just watched someone eat Hawaiian pizza and now I need a support group.", sentiment: [0.07] },
         { text: "Putting pineapple on pizza is how civilizations fall.", sentiment: [0.03] },
-        { text: "If you like pineapple on pizza, don't talk to me until you've repented.", sentiment: [0.08] },
+        { text: "If you like pineapple on pizza, don't talk to me until you've seen the error of your ways.", sentiment: [0.08] },
         { text: "There should be a warning label on Hawaiian pizza. Like: 'May cause moral decay.'", sentiment: [0.04] }
     ],
     "0.1-0.2": [
@@ -39,7 +39,7 @@ export const OPINION_POSTS = {
         { text: "Pineapple is a dessert, not a topping. Fight me.", sentiment: [0.18] }
     ],
     "0.2-0.3": [
-        { text: "Tried pineapple pizza once after Devotional. Bad idea. Spirit left immediately. 💀", sentiment: [0.28] },
+        { text: "Tried pineapple pizza once. Bad idea. My taste buds left immediately. 💀", sentiment: [0.28] },
         { text: "I'll eat it to be polite, but I'm praying someone else finishes it first.", sentiment: [0.27] },
         { text: "I don't hate it, but if there's any other option, I'm taking that.", sentiment: [0.23] },
         { text: "It's not for me. I like my pizza savory, not... confused.", sentiment: [0.28] },
@@ -74,20 +74,20 @@ export const OPINION_POSTS = {
         { text: "I used to judge people for liking it. Now I just nod slowly.", sentiment: [0.52] },
         { text: "Pineapple pizza isn't great. But it's interesting. And sometimes that's enough.", sentiment: [0.55] },
         { text: "I'd eat it if someone else paid for it. That's where I'm at.", sentiment: [0.50] },
-        { text: "Pineapple on pizza? As long as we pray first.", sentiment: [0.56] },
-        { text: "Might bring a Hawaiian pizza to ward prayer just to test testimonies.", sentiment: [0.58] },
+        { text: "Pineapple on pizza? As long as we say grace first.", sentiment: [0.56] },
+        { text: "Might bring a Hawaiian pizza to the next potluck just to test friendships.", sentiment: [0.58] },
         { text: "You know what? There's something kinda rebellious about liking it.", sentiment: [0.55] }
     ],
     "0.6-0.7": [
-        { text: "Lowkey enjoy pineapple on pizza. Might bring one to the next break the fast just to see what happens.", sentiment: [0.61] },
-        { text: "Unpopular opinion: Hawaiian pizza is better than most Mutual dates. 🍕❤️", sentiment: [0.68] },
-        { text: "Pineapple pizza slaps. Fights welcome in the MARB after class. 👊🍍", sentiment: [0.66] },
+        { text: "Lowkey enjoy pineapple on pizza. Might bring one to the next party just to see what happens.", sentiment: [0.61] },
+        { text: "Unpopular opinion: Hawaiian pizza is better than most blind dates. 🍕❤️", sentiment: [0.68] },
+        { text: "Pineapple pizza slaps. Fights welcome in the comments after this post. 👊🍍", sentiment: [0.66] },
         { text: "Honestly, pineapple adds a vibe. Don't @ me.", sentiment: [0.65] },
         { text: "Was skeptical at first, but now I kinda crave it sometimes.", sentiment: [0.69] },
         { text: "Unexpectedly good combo. The tang hits just right. 🍍🔥", sentiment: [0.66] }
     ],
     "0.7-0.8": [
-        { text: "Hawaiian pizza got me through finals.", sentiment: [0.75] },
+        { text: "Hawaiian pizza got me through finals week.", sentiment: [0.75] },
         { text: "Pineapple pizza supremacy. You all just don't have the palate.", sentiment: [0.78] },
         { text: "Sweet, salty, cheesy, doughy — it's a flavor symphony. 🎶", sentiment: [0.73] },
         { text: "Pineapple on pizza is criminally underrated. I will die on this hill.", sentiment: [0.76] },
@@ -96,7 +96,7 @@ export const OPINION_POSTS = {
         { text: "It's not just a topping. It's a lifestyle choice I'm proud of.", sentiment: [0.71] }
     ],
     "0.8-0.9": [
-        { text: "Pineapple on pizza is proof God wants us to be happy. 🍕✨", sentiment: [0.85] },
+        { text: "Pineapple on pizza is proof that good things exist in this world. 🍕✨", sentiment: [0.85] },
         { text: "The perfect bite: melty cheese, ham, and pineapple. Don't talk to me unless you've tried it.", sentiment: [0.85] },
         { text: "Pineapple on pizza is elite. Elite. Y'all are just scared of flavor.", sentiment: [0.87] },
         { text: "Haters gonna hate, but pineapple pizza is top tier. 🍍💅", sentiment: [0.82] },
@@ -108,11 +108,11 @@ export const OPINION_POSTS = {
     "0.9-1.0": [
         { text: "Hawaiian pizza is celestial-tier cuisine.", sentiment: [0.91] },
         { text: "If loving pineapple pizza is wrong, then I don't want to be right.", sentiment: [0.97] },
-        { text: "If you bring pineapple pizza to a ward activity, I'm marrying you.", sentiment: [0.99] },
+        { text: "If you bring pineapple pizza to a party, I'm marrying you.", sentiment: [0.99] },
         { text: "Hawaiian pizza healed my trust issues. It's that deep.", sentiment: [0.92] },
         { text: "One bite of pineapple pizza and I knew joy was real.", sentiment: [0.95] },
         { text: "Can't trust anyone who doesn't like pineapple pizza. That's my love language.", sentiment: [0.91] },
-        { text: "The celestial kingdom better have Hawaiian pizza or I'm rebelling.", sentiment: [0.98] },
+        { text: "Heaven better have Hawaiian pizza or I'm rebelling.", sentiment: [0.98] },
         { text: "No cap, pineapple pizza changed my life. I'm emotional just thinking about it.", sentiment: [0.99] }
     ]
 };
