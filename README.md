@@ -25,7 +25,7 @@ This simulation uses a custom opinion dynamics model designed for intuitive visu
 
 The algorithm uses a sophisticated matrix-based approach where opinions are updated through a weighted averaging process. The update rule is:
 
-$$X^{(t+1)} = X^{(t)} + \text{clip}\left(\alpha \cdot (W \cdot X^{(t)} - X^{(t)}), -\Delta_{\max}, \Delta_{\max}\right)$$
+$$X^{(t+1)} = X^{(t)} + \text{clip}(\alpha \cdot (W \cdot X^{(t)} - X^{(t)}), -\Delta_{\max}, \Delta_{\max})$$
 
 where:
 - $X^{(t)}$: Vector of all agent opinions at time $t$
@@ -39,7 +39,7 @@ The weight matrix $W$ is constructed through several steps:
 1. **Similarity normalization** ($s_{norm}$): A matrix that captures how similar each agent's opinions are to others, normalized so each row sums to 1
 2. **Network structure** ($A$): Binary adjacency matrix (0s and 1s) representing who is connected to whom in the network
 3. **Final weight matrix** ($W$): Constructed as:
-   $$W = s_{norm} \cdot A + I - \text{diag}(s_{norm} \cdot A \cdot \mathbf{1})$$
+   $$W = s_{norm} \cdot A + I - \text{diag}(s_{norm} \cdot A \cdot 1)$$
    
    Where:
    - $s_{norm} \cdot A$: Element-wise multiplication of similarity and network structure
@@ -54,30 +54,22 @@ For each agent $i$, the opinion update at each step works as follows:
 
 1. **Weighted Average of Neighbors:**
    - Compute a weighted sum of all agents' current opinions:
-     $$
-     x_i^{\text{new}} = \sum_{j} W_{ij} x_j^{(t)}
-     $$
+     $$x_i^{\text{new}} = \sum_{j} W_{ij} x_j^{(t)}$$
      where $W_{ij}$ is how much agent $j$ influences agent $i$.
 
 2. **Apply Smoothing (Alpha Filter):**
    - Blend the new suggested opinion with the agent's current opinion:
-     $$
-     x_i^{\text{filtered}} = \alpha \cdot x_i^{\text{new}} + (1 - \alpha) \cdot x_i^{(t)}
-     $$
+     $$x_i^{\text{filtered}} = \alpha \cdot x_i^{\text{new}} + (1 - \alpha) \cdot x_i^{(t)}$$
      where $\alpha$ controls how quickly opinions can change.
 
 3. **Constrain the Change (Clipping):**
    - Limit how much the opinion can change in one step:
-     $$
-     \Delta x_i = \text{clip}(x_i^{\text{filtered}} - x_i^{(t)},\ -\Delta_{\max},\ \Delta_{\max})
-     $$
+     $$\Delta x_i = \text{clip}(x_i^{\text{filtered}} - x_i^{(t)}, -\Delta_{\max}, \Delta_{\max})$$
      where $\Delta_{\max}$ is the maximum allowed change per step.
 
 4. **Update the Opinion:**
    - The agent's new opinion is:
-     $$
-     x_i^{(t+1)} = x_i^{(t)} + \Delta x_i
-     $$
+     $$x_i^{(t+1)} = x_i^{(t)} + \Delta x_i$$
 
 **In plain English:**
 - Each agent looks at all other agents' opinions, weighted by how similar and connected they are.
