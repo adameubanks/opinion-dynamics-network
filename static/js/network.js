@@ -418,7 +418,7 @@ function initialize_random_A(n_agents, p, min_connections, user_connections) {
 }
 
 export class Network {
-    constructor(n_agents, X, alpha_filter, user_agents, user_alpha, user_connections, min_connections, A = null, max_opinion_change = 0.1) {
+    constructor(n_agents, X, alpha_filter, user_agents, user_connections, min_connections, A = null, max_opinion_change = 0.05) {
         this.n_agents = n_agents;
         this.alpha_filter = alpha_filter;
         this.max_opinion_change = max_opinion_change;
@@ -426,7 +426,6 @@ export class Network {
         this.X = X ? X.map(row => [...row]) : Array.from({ length: n_agents }, () => [Math.random()]);
         this.n_user_agents = user_agents.length;
         this.user_agents = user_agents.map((ua, i) => ua ? [...ua] : [...this.X[i]]);
-        this.user_alpha = user_alpha;
         for (let i = 0; i < this.n_user_agents; i++) {
             if (!user_agents[i]) {
                 this.user_agents[i] = [...this.X[i]];
@@ -452,30 +451,19 @@ export class Network {
         if (!Array.isArray(new_opinion)) new_opinion = [new_opinion];
         if (new_opinion.length !== 1) throw new Error(`Opinion vector shape mismatch. Expected (1,), got (${new_opinion.length},)`);
         
-        // Apply dynamic constraint based on current polarization
-        const stats = calculateOpinionStatistics(this.X);
-        const dynamicMaxChange = Math.max(0.1, Math.min(0.01, 0.1 * (stats.std / 0.3)));
-        
+        // Apply max change constraint for non-user agents
         const current_opinion = this.X[agent_index][0];
         const opinion_change = new_opinion[0] - current_opinion;
-        const constrained_change = Math.max(-dynamicMaxChange, Math.min(dynamicMaxChange, opinion_change));
+        const constrained_change = Math.max(-this.max_opinion_change, Math.min(this.max_opinion_change, opinion_change));
         
         this.X[agent_index] = [current_opinion + constrained_change];
     }
     add_user_opinion(opinion, user_index = 0) {
         if (!(0 <= user_index && user_index < this.n_user_agents)) throw new Error("user_index out of bounds");
         
-        // Get current user opinion
-        const current_opinion = this.user_agents[user_index][0];
-        const target_opinion = opinion[0];
-        
-        // Calculate opinion change with more gradual influence
-        // Use a much smaller alpha for very gradual changes
-        const gradual_alpha = 0.15; // Very gradual change - only 15% weight on new opinion
-        const smoothed = gradual_alpha * target_opinion + (1 - gradual_alpha) * current_opinion;
-        
-        this.user_agents[user_index][0] = smoothed;
-        this.set_agent_opinion(user_index, [smoothed]);
+        // User opinions update completely without constraints
+        this.user_agents[user_index][0] = opinion[0];
+        this.X[user_index] = [opinion[0]];
     }
     update_network(include_user_opinions = true) {
         const s_norm = get_s_norm(this.X);
@@ -492,24 +480,21 @@ export class Network {
         const W = get_W(s_norm, adjusted_A);
         const new_X = matrixVectorProduct(W, this.X).map(x => [x]);
         
-        // Calculate current polarization and dynamic max change
-        const stats = calculateOpinionStatistics(this.X);
-        const dynamicMaxChange = Math.max(0.001, Math.min(0.1, 0.1 * (stats.std / 0.3)));
-        
-        // Update opinions with alpha filter and dynamic maximum change constraint
+        // Update opinions with alpha filter and max change constraint (except for user agents)
         this.X = this.X.map((row, i) => {
-            const alpha_filtered_opinion = this.alpha_filter * new_X[i][0] + (1 - this.alpha_filter) * row[0];
-            const current_opinion = row[0];
-            const opinion_change = alpha_filtered_opinion - current_opinion;
-            const constrained_change = Math.max(-dynamicMaxChange, Math.min(dynamicMaxChange, opinion_change));
-            return [current_opinion + constrained_change];
+            if (i < this.n_user_agents) {
+                // User agents keep their opinions unchanged
+                return [...this.user_agents[i]];
+            } else {
+                // Non-user agents: apply alpha filter and max change constraint
+                const alpha_filtered_opinion = this.alpha_filter * new_X[i][0] + (1 - this.alpha_filter) * row[0];
+                const current_opinion = row[0];
+                const opinion_change = alpha_filtered_opinion - current_opinion;
+                const constrained_change = Math.max(-this.max_opinion_change, Math.min(this.max_opinion_change, opinion_change));
+                return [current_opinion + constrained_change];
+            }
         });
         this.time_step += 1;
-        if (this.n_user_agents > 0) {
-            for (let i = 0; i < this.n_user_agents; i++) {
-                this.X[i] = [...this.user_agents[i]];
-            }
-        }
         this.edge_weights = calculate_edge_weights(this.X);
         return this.get_state();
     }

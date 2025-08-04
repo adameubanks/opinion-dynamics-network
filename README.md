@@ -17,21 +17,21 @@ Watch as opinions shift and evolve across a network as agents reinforce ties wit
 
 Behind the fun is real research on how bots and AI-powered influencers can sway public opinion, fueling unity, polarization, or manipulation. This simulation demonstrates the principles of opinion dynamics in social networks.
 
-## 🧮 Mathematical Model: Custom Opinion Dynamics
+## 🧮 Mathematical Model: Constrained French-DeGroot Opinion Dynamics
 
-This simulation uses a custom opinion dynamics model designed for intuitive visualization and educational clarity. The core idea is that each agent's opinion is represented as a number between 0 and 1 (where 0 = "strongly against", 1 = "strongly for"), and agents are connected in a network where the strength and length of edges represent how similar or different their opinions are.
+This simulation uses a modified French-DeGroot opinion dynamics model with realistic constraints to prevent sudden opinion jumps. The core idea is that each agent's opinion is represented as a number between 0 and 1 (where 0 = "strongly against", 1 = "strongly for"), and agents are connected in a network where the strength and length of edges represent how similar or different their opinions are.
 
 ### **Opinion Update Rule**
 
-The algorithm uses a sophisticated matrix-based approach where opinions are updated through a weighted averaging process. The update rule is:
+The algorithm uses a matrix-based approach with constraints to ensure realistic opinion dynamics. The update rule is:
 
 $$X^{(t+1)} = X^{(t)} + \text{clip}(\alpha \cdot (W \cdot X^{(t)} - X^{(t)}), -\Delta_{\max}, \Delta_{\max})$$
 
 where:
 - $X^{(t)}$: Vector of all agent opinions at time $t$
 - $W$: A normalized weight matrix that depends on the current opinion similarities
-- $\alpha$: Smoothing/filter parameter (controls how fast opinions change)
-- $\Delta_{\max}$: Maximum allowed opinion change per step (prevents sudden jumps)
+- $\alpha$: Smoothing/filter parameter (controls how fast opinions change, set to 0.1 for gradual changes)
+- $\Delta_{\max}$: Maximum allowed opinion change per step (set to 0.05 to prevent sudden jumps)
 - The `clip` function ensures the opinion change is within $[-\Delta_{\max}, \Delta_{\max}]$
 
 The weight matrix $W$ is constructed through several steps:
@@ -60,12 +60,12 @@ For each agent $i$, the opinion update at each step works as follows:
 2. **Apply Smoothing (Alpha Filter):**
    - Blend the new suggested opinion with the agent's current opinion:
      $$x_i^{\text{filtered}} = \alpha \cdot x_i^{\text{new}} + (1 - \alpha) \cdot x_i^{(t)}$$
-     where $\alpha$ controls how quickly opinions can change.
+     where $\alpha = 0.1$ controls how quickly opinions can change.
 
 3. **Constrain the Change (Clipping):**
    - Limit how much the opinion can change in one step:
      $$\Delta x_i = \text{clip}(x_i^{\text{filtered}} - x_i^{(t)}, -\Delta_{\max}, \Delta_{\max})$$
-     where $\Delta_{\max}$ is the maximum allowed change per step.
+     where $\Delta_{\max} = 0.05$ is the maximum allowed change per step.
 
 4. **Update the Opinion:**
    - The agent's new opinion is:
@@ -74,7 +74,7 @@ For each agent $i$, the opinion update at each step works as follows:
 **In plain English:**
 - Each agent looks at all other agents' opinions, weighted by how similar and connected they are.
 - The agent computes a weighted average of these opinions.
-- The agent moves a fraction ($\alpha$) of the way toward this average, but never more than $\Delta_{\max}$ in one step.
+- The agent moves only 10% ($\alpha = 0.1$) of the way toward this average, and never more than 5% ($\Delta_{\max} = 0.05$) in one step.
 - This process repeats at each time step, leading to gradual convergence or polarization.
 
 ### **Edge Weights and Visualization**
@@ -95,5 +95,3 @@ For each agent $i$, the opinion update at each step works as follows:
 🎉 **The site is now live!** Visit the live demo to try it out yourself:
 
 **[https://adameubanks.github.io/opinion-dynamics-network/](https://adameubanks.github.io/opinion-dynamics-network/)**
-
-Experience the opinion dynamics simulation in action - no setup required!

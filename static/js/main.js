@@ -18,14 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Simulation parameters (matching Python backend exactly)
     const nAgents = 21;
-    const alphaFilter = 0.9;
+    const alphaFilter = 0.1;
     const userAgents = [[0.5]];
-    const userAlpha = 0.95;
     const userConnections = 5;
     const minConnections = 2;
-    const maxOpinionChange = 0.1;
+    const maxOpinionChange = 0.05;
 
-    let network = new Network(nAgents, null, alphaFilter, userAgents, userAlpha, userConnections, minConnections, null, maxOpinionChange);
+    let network = new Network(nAgents, null, alphaFilter, userAgents, userConnections, minConnections, null, maxOpinionChange);
     let state = createInitialState();
     
     // Properly initialize state with network data
@@ -142,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleResetSimulation() {
         try {
-            network = new Network(nAgents, null, alphaFilter, userAgents, userAlpha, userConnections, minConnections, null, maxOpinionChange);
+            network = new Network(nAgents, null, alphaFilter, userAgents, userConnections, minConnections, null, maxOpinionChange);
             state.simulationRunning = false;
             state.currentOpinions = network.X.map(row => [...row]);
             state.previousOpinions = [];
